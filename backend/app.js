@@ -19,7 +19,6 @@ app.use(cors());
 
 //connect to neo4j db and start a session
 const driver = neo4j.driver("bolt://localhost:7687/PoliticlearDB", neo4j.auth.basic('neo4j', 'ei22068'));
-const session = driver.session();
 
 //initialize random id generator
 const uuidGen = UUID(0);
@@ -95,13 +94,15 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
  */
 app.post("/api/CidadaoRegistado/registar", (req, res) =>{
 
+    var session = driver.session();
+
     const result = validateRegister(req.body);
     if(result.error) return res.status(400).send(result.error);
 
-    session.run(`MATCH (n) WHERE n.username = '${req.body.username}' RETURN n`)
+    session.run(`MATCH (n) WHERE n.username = '${req.body.username}' OR n.nCC = ${req.body.nCC} RETURN n`)
         .then((result) => {
             if(result.records.length > 0){
-                res.status(400).send("Já existe um utilizador com esse username.");
+                res.status(400).send("Já existe um utilizador com esse username ou cartão de cidadão.");
             } else {
                 const idGrande = uuidGen.uuid();
                 const id = idGrande % 10000000;
@@ -170,6 +171,10 @@ app.post("/api/CidadaoRegistado/registar", (req, res) =>{
  *                                  type: integer
  *                                  required: true
  *                                  example: "Sul"
+ *                              partido:
+ *                                  type: integer
+ *                                  required: true
+ *                                  example: 1
  *          responses:
  *              '201':
  *                  description: Um novo político foi registado com sucesso. Devolve a informação do novo político.
@@ -186,6 +191,8 @@ app.post("/api/CidadaoRegistado/registar", (req, res) =>{
  */
 app.post("/api/Politico/registar", (req, res) =>{
 
+    var session = driver.session();
+
     const result = validateRegisterPolitico(req.body);
     if(result.error) return res.status(400).send(result.error);
 
@@ -196,27 +203,33 @@ app.post("/api/Politico/registar", (req, res) =>{
     var insertedNode = {};
 
     var pesquisa = async () =>{
-        await session.run(`MATCH (n) WHERE n.username = '${req.body.username}' RETURN n`)
+        await session.run(`MATCH (n) WHERE n.username = '${req.body.username}' OR n.nCC = ${req.body.nCC} RETURN n`)
             .then(async (result) => {
                 if(result.records.length > 0){
-                    res.status(400).send("Já existe um utilizador com esse username.");
+                    res.status(400).send("Já existe um utilizador com esse username ou cartão de cidadão.");
                 } else {
                     const idGrande = uuidGen.uuid();
                     const id = idGrande % 10000000;
 
                     trans = session.beginTransaction();
 
-                    await trans.run(`CREATE (u:Politico {id: ${id}, username: '${req.body.username}', password: '${req.body.password}', nome: '${req.body.nome}', nCC: ${req.body.nCC}, habilitacoes: '${req.body.habilitacoes}', circuloEleitoral: '${req.body.circuloEleitoral}', ativo: true}) RETURN u`)
+                    await trans.run(`MATCH (o:Organizacao) WHERE o.id = ${req.body.partido} AND o.tipo = 'Partido' CREATE (u:Politico {id: ${id}, username: '${req.body.username}', password: '${req.body.password}', nome: '${req.body.nome}', nCC: ${req.body.nCC}, habilitacoes: '${req.body.habilitacoes}', circuloEleitoral: '${req.body.circuloEleitoral}', ativo: true}) CREATE (u)-[:PERTENCE_A]->(o) RETURN o, u`)
                         .then((result) => {
-                            insertedNode.id = id;
-                            insertedNode.username = `${req.body.username}`;
-                            insertedNode.password = `${req.body.password}`;
-                            insertedNode.nome = `${req.body.nome}`;
-                            insertedNode.nCC = req.body.nCC;
-                            insertedNode.habilitacoes = `${req.body.habilitacoes}`;
-                            insertedNode.circuloEleitoral = `${req.body.circuloEleitoral}`;
-                            trans.commit();
-                            })
+                            if(result.records.length == 0){
+                                res.status(404).send("Partido não encontrado.");
+                                trans.rollback();
+                            } else {
+                                insertedNode.id = id;
+                                insertedNode.username = `${req.body.username}`;
+                                insertedNode.password = `${req.body.password}`;
+                                insertedNode.nome = `${req.body.nome}`;
+                                insertedNode.nCC = req.body.nCC;
+                                insertedNode.habilitacoes = `${req.body.habilitacoes}`;
+                                insertedNode.circuloEleitoral = `${req.body.circuloEleitoral}`;
+                                insertedNode.partido = req.body.partido;
+                                trans.commit();    
+                            }
+                        })
                         .catch((error) => {
                             console.log(error);
                             res.status(400).send("Algo correu mal com a query.");
@@ -297,6 +310,8 @@ app.post("/api/Politico/registar", (req, res) =>{
  */
 app.post("/api/:tipoUser/registar", (req, res) =>{
 
+    var session = driver.session();
+
     const result = validateRegister(req.body);
     if(result.error) return res.status(400).send(result.error);
 
@@ -308,10 +323,10 @@ app.post("/api/:tipoUser/registar", (req, res) =>{
 
     var pesquisa = async () =>{
 
-        await session.run(`MATCH (n) WHERE n.username = '${req.body.username}' RETURN n`)
+        await session.run(`MATCH (n) WHERE n.username = '${req.body.username}' OR n.CC = ${req.body.nCC} RETURN n`)
             .then(async (result) => {
                 if(result.records.length > 0){
-                    res.status(400).send("Já existe um utilizador com esse username.");
+                    res.status(400).send("Já existe um utilizador com esse username ou cartão de cidadão.");
                 } else {
                     const idGrande = uuidGen.uuid();
                     const id = idGrande % 10000000;
@@ -359,12 +374,9 @@ app.post("/api/:tipoUser/registar", (req, res) =>{
 /**
  * @swagger
  * 
- * /api/{tipoUser}/login:
+ * /api/login:
  *      post:
  *          description: Efetuar login.
- *          parameters:
- *              - in: path
- *                name: tipoUser
  *          requestBody:
  *              required: true
  *              content:
@@ -390,21 +402,23 @@ app.post("/api/:tipoUser/registar", (req, res) =>{
  *              '401':
  *                  description: Credenciais de login inválidas ou utilizador está inativo.  
  */
-app.post("/api/:tipoUser/login", (req, res) =>{
+app.post("/api/login", (req, res) =>{
+
+    var session = driver.session();
 
     const result = validateLogin(req.body);
     if(result.error) return res.status(400).send(result.error);
 
     var matchedNode = {};
 
-    session.run(`MATCH (u:${req.params.tipoUser}) WHERE u.username = '${req.body.username}' AND u.password = '${req.body.password}' RETURN u`)
+    session.run(`MATCH (u) WHERE u.username = '${req.body.username}' AND u.password = '${req.body.password}' RETURN u`)
         .then((result) => {
             if(result.records.length == 0){
                 res.status(401).send("Username/password inválido.");
             } else {
                 if(result.records[0]._fields[0].properties.ativo){
-                    matchedNode = {id: result.records[0]._fields[0].properties.id.low, tipo: `${req.params.tipoUser}`, username: `${req.body.username}`};
-                    var tokens = generateTokens(matchedNode, session, res);
+                    matchedNode = {id: result.records[0]._fields[0].properties.id.low, tipo: result.records[0]._fields[0].labels[0], username: `${req.body.username}`, nome: result.records[0]._fields[0].properties.nome};
+                    var tokens = generateTokens(matchedNode, res);
                     if(!res.writableEnded){
                         res.status(200).send({info: matchedNode, tokens: tokens});    
                     }    
@@ -446,11 +460,402 @@ app.post("/api/:tipoUser/login", (req, res) =>{
  *                      
  */
 app.delete("/api/logout", (req, res) => {
+    
+    deleteToken(req.headers.refreshtoken, res);   
+});
+
+/**
+ * @swagger
+ * 
+ * /api/profile/Politico/{id}:  
+ *      get:
+ *          description: Obter todas as informações de um político. Possível quando logged in como esse político or como um administrador.
+ *          security:
+ *              - bearerAuth: []
+ *          parameters:
+ *              - in: header
+ *                name: refreshToken
+ *              - in: path
+ *                name: id
+ * 
+ *          responses:
+ *              '200':
+ *                  description: Informações do utilizador obtidas com sucesso. Devolve informações do utilizador.
+ *                              
+ *              '400':
+ *                  description: Erro com o pedido.
+ * 
+ *              '401':
+ *                  description: Access token em falta.
+ *              
+ *              '403':
+ *                  description: O utilizador não tem permissões para visualizar as informações deste utilizador ou o token de acesso está fora de validade.
+ *         
+ *      put:
+ *          description: Atualizar informação de um político. Possível quando logged in como um administrador.
+ *          security:
+ *              - bearerAuth: []
+ *          parameters:
+ *              - in: header
+ *                name: refreshToken
+ *              - in: path
+ *                name: id
+ * 
+ *          requestBody:
+ *              required: true
+ *              content:
+ *                  application/json:
+ *                      schema:
+ *                          type: object
+ *                          properties:
+ *                              nome:
+ *                                  type: string
+ *                                  example: "Tiago Rocha Passos"
+ *                              username:
+ *                                  type: string
+ *                                  example: "trocha33333"
+ *                              password:
+ *                                  type: string
+ *                                  example: "passteste22"
+ *                              nCC:
+ *                                  type: integer
+ *                                  example: 8127364
+ *                              habilitacoes:
+ *                                  type: string
+ *                                  example: "Mestrado"
+ *                              partido:
+ *                                  type: integer
+ *                                  example: 1
+ * 
+ *          responses:
+ *              '200':
+ *                  description: Informações do utilizador alteradas com sucesso. Devolve novas informações do utilizador.
+ *                              
+ *              '400':
+ *                  description: Erro com o pedido.
+ * 
+ *              '401':
+ *                  description: Access token em falta.
+ *              
+ *              '403':
+ *                  description: O utilizador não tem permissões para alterar as informações deste utilizador ou o token de acesso está fora de validade.
+ *               
+ *              '404':
+ *                  description: Utilizador não encontrado.
+ */
+app.get("/api/profile/Politico/:id", (req, res) => {
+
+    var session = driver.session();
+
+    var matchedNode = {user: {}, partido: {}, registos: {votados: [], acerca: []}, organizacoes: [], eventos: {organizados: [], participados: []}, concursos: {organizados: [], participados: [], vencidos: []}, contratos: {propostos: [], assinados: []}};
+
+    user = validateToken(req, res);
+    
+    var pesquisa = async (user) => {
+
+        await session.run(`MATCH (u:Politico) WHERE u.id = ${req.params.id} RETURN u`)
+            .then(async (result) => {
+                if(result.records.length == 0){
+                    res.status(404).send("Utilizador não encontrado.");
+                    trans.rollback();
+                } else {
+                    matchedNode.user = {id: req.params.id, tipoUser: "Politico", nome: result.records[0]._fields[0].properties.nome, username: result.records[0]._fields[0].properties.username, nCC: result.records[0]._fields[0].properties.nCC.low, habilitacoes: result.records[0]._fields[0].properties.habilitacoes, circuloEleitoral: result.records[0]._fields[0].properties.circuloEleitoral};
+                    await session.run(`MATCH (u:Politico)-[:PERTENCE_A]->(o:Organizacao) WHERE u.id = ${req.params.id} AND o.tipo = 'Partido' RETURN o`)
+                        .then((result) => {
+                            matchedNode.partido = {id: result.records[0]._fields[0].properties.id.low, nome: `${result.records[0]._fields[0].properties.nome}`};
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })
+                    
+                    await session.run(`MATCH (u:Politico)-[:PERTENCE_A]->(o:Organizacao) WHERE u.id = ${req.params.id} RETURN o`)
+                        .then((result) => {
+                            result.records.forEach((record) => {
+                                matchedNode.organizacoes.push({id: record._fields[0].properties.id.low, nome: `${record._fields[0].properties.nome}`});
+                            });
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })
+
+                    await session.run(`MATCH (u:Politico)-[:ORGANIZA]->(c:Concurso) WHERE u.id = ${req.params.id} RETURN c`)
+                        .then((result) => {
+                            result.records.forEach((record) => {
+                                matchedNode.concursos.organizados.push({id: record._fields[0].properties.id.low, nome: `${record._fields[0].properties.nome}` });
+                            });
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })
+
+                    await session.run(`MATCH (u:Politico)-[:PARTICIPA_EM]->(c:Concurso) WHERE u.id = ${req.params.id} RETURN c`)
+                        .then((result) => {
+                            result.records.forEach((record) => {
+                                matchedNode.concursos.participados.push({id: record._fields[0].properties.id.low, nome: `${record._fields[0].properties.nome}` });
+                            });
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })
+
+                    await session.run(`MATCH (u:Politico)-[:VENCE]->(c:Concurso) WHERE u.id = ${req.params.id} RETURN c`)
+                        .then((result) => {
+                            result.records.forEach((record) => {
+                                matchedNode.concursos.vencidos.push({id: record._fields[0].properties.id.low, nome: `${record._fields[0].properties.nome}` });
+                            });
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })
+
+                    await session.run(`MATCH (u:Politico)-[:PROPOE]->(c:Contrato) WHERE u.id = ${req.params.id} RETURN c`)
+                        .then((result) => {
+                            result.records.forEach((record) => {
+                                matchedNode.contratos.propostos.push({id: record._fields[0].properties.id.low, nome: `${record._fields[0].properties.nome}` });
+                            });
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })
+
+                    await session.run(`MATCH (u:Politico)-[:ASSINA]->(c:Contrato) WHERE u.id = ${req.params.id} RETURN c`)
+                        .then((result) => {
+                            result.records.forEach((record) => {
+                                matchedNode.contratos.assinados.push({id: record._fields[0].properties.id.low, nome: `${record._fields[0].properties.nome}` });
+                            });
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })
+                    
+                    await session.run(`MATCH (u:Politico)-[:ORGANIZA]->(e:Evento) WHERE u.id = ${req.params.id} RETURN e`)
+                        .then((result) => {
+                            result.records.forEach((record) => {
+                                matchedNode.eventos.organizados.push({id: record._fields[0].properties.id.low, nome: `${record._fields[0].properties.nome}` });
+                            });
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })
+                    
+                    await session.run(`MATCH (u:Politico)-[:PARTICIPA_EM]->(e:Evento) WHERE u.id = ${req.params.id} RETURN e`)
+                        .then((result) => {
+                            result.records.forEach((record) => {
+                                matchedNode.eventos.participados.push({id: record._fields[0].properties.id.low, nome: `${record._fields[0].properties.nome}` });
+                            });
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })
+                    
+                    await session.run(`MATCH (u:Politico)-[:VOTA_EM]->(r:Registo) WHERE u.id = ${req.params.id} RETURN r`)
+                        .then((result) => {
+                            result.records.forEach((record) => {
+                                matchedNode.registos.votados.push({id: record._fields[0].properties.id.low, titulo: `${record._fields[0].properties.titulo}` });
+                            });
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })
+                        
+                    await session.run(`MATCH (u:Politico)<-[:ACERCA_DE]-(r:Registo) WHERE u.id = ${req.params.id} RETURN r`)
+                        .then((result) => {
+                            result.records.forEach((record) => {
+                                matchedNode.registos.acerca.push({id: record._fields[0].properties.id.low, titulo: `${record._fields[0].properties.titulo}` });
+                            });
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })
+                }
+            })
+            .catch((error) => {
+                console.log(error);
+                res.status(400).send("Algo correu mal com a query.");
+            })
+    }
+
+    if(user && (user.tipo == 'Administrador' || (user.id == req.params.id && user.tipo == "Politico"))){
+        refreshToken({id:user.id, username: user.username, tipo: user.tipo}, req.headers.refreshtoken, session, matchedNode).then(() => {
+            pesquisa(user).then(() => {
+                if(!res.writableEnded){
+                    res.status(200).send(matchedNode);
+                }
+            })    
+        });
+    } else {
+        if(!res.writableEnded){
+            res.status(403).send("Este utilizador não tem permissões para efetuar a esta operação.");
+        }
+    }
+});
+
+app.put("/api/profile/Politico/:id", (req, res) => {
+
+    var session = driver.session();
+
+    const result = validateAlterarPolitico(req.body);
+    if(result.error) return res.status(400).send(result.error);
 
     user = validateToken(req, res);
 
-    if(user){
-        deleteToken(user, req.headers.refreshtoken, session, res);    
+    var updatedNode = {};
+
+    var statement = `MATCH (u:Politico) WHERE u.id = ${req.params.id} `;
+
+    if(req.body.nome){
+        statement = statement + `SET u.nome = '${req.body.nome}' `;
+    }
+    if(req.body.username){
+        if(statement.includes("SET")){
+            statement = statement + `, u.username = '${req.body.username}' `;
+        } else {
+            statement = statement + `SET u.username = '${req.body.username}' `;
+        }
+    }
+    if(req.body.password){
+        if(statement.includes("SET")){
+            statement = statement + `, u.password = '${req.body.password}' `;
+        } else {
+            statement = statement + `SET u.password = '${req.body.password}' `;
+        }
+    }
+    if(req.body.nCC){
+        if(statement.includes("SET")){
+            statement = statement + `, u.nCC = ${req.body.nCC} `;
+        } else {
+            statement = statement + `SET u.nCC = ${req.body.nCC} `;
+        }
+    }
+    if(req.body.habilitacoes){
+        if(statement.includes("SET")){
+            statement = statement + `, u.habilitacoes = '${req.body.habilitacoes}' `;
+        } else {
+            statement = statement + `SET u.habilitacoes = '${req.body.habilitacoes}' `;
+        }
+    }
+    if(req.body.circuloEleitoral){
+        if(statement.includes("SET")){
+            statement = statement + `, u.circuloEleitoral = '${req.body.circuloEleitoral}' `;
+        } else {
+            statement = statement + `SET u.circuloEleitoral = '${req.body.circuloEleitoral}' `;
+        }
+    }
+
+    statement = statement + "RETURN u";
+
+    if(req.body.username || req.body.nCC){
+        var statement2;
+        var errorMessage;
+
+        if(req.body.username && !req.body.nCC){
+            statement2 = `MATCH (n) WHERE n.username = '${req.body.username}' RETURN n`;
+            errorMessage = "Já existe um utilizador com esse username.";
+        } else if(!req.body.username && req.body.nCC){
+            statement2 = `MATCH (n) WHERE n.nCC = ${req.body.nCC} RETURN n`;
+            errorMessage = "Já existe um utilizador com esse cartão de cidadão.";
+        } else if(req.body.username && req.body.nCC){
+            statement2 = `MATCH (n) WHERE n.username = '${req.body.username}' OR n.nCC = ${req.body.nCC} RETURN n`;
+            errorMessage = "Já existe um utilizador com esse username ou cartão de cidadão.";
+        }
+    }
+
+    var trans;
+
+    var pesquisa = async (statement) => {
+
+        trans = session.beginTransaction();
+
+        await trans.run(`MATCH (n:Politico) WHERE n.id = ${req.params.id} RETURN n`)
+            .then(async (result) => {
+                if(result.records.length == 0){
+                    res.status(404).send("Utilizador não encontrado.");
+                    trans.rollback();
+                } else {
+                    if(req.body.username || req.body.nCC){
+                        await trans.run(statement2)
+                            .then(async (result) => {
+                                if(result.records.length > 0){
+                                    res.status(401).send(errorMessage);
+                                    trans.rollback();
+                                } else {
+                                    await trans.run(statement)
+                                        .then((result) => {
+                                            updatedNode.id = req.params.id;
+                                            updatedNode.nome = `${result.records[0]._fields[0].properties.nome}`;
+                                            updatedNode.username = `${result.records[0]._fields[0].properties.username}`;
+                                            updatedNode.password = `${result.records[0]._fields[0].properties.password}`;
+                                            updatedNode.nCC = result.records[0]._fields[0].properties.nCC;
+                                            updatedNode.tipo = result.records[0]._fields[0].labels[0];
+                                        })
+                                        .catch((error) => {
+                                            console.log(error);
+                                            res.status(400).send("Algo correu mal com a query.");
+                                            trans.rollback();
+                                        });
+                                }
+                            })
+                            .catch((error) => {
+                                console.log(error);
+                                res.status(400).send("Algo correu mal com a query.");
+                                trans.rollback();
+                            })
+                    } else {
+                        await trans.run(statement)
+                            .then((result) => {
+                                updatedNode.id = req.params.id;
+                                updatedNode.nome = `${result.records[0]._fields[0].properties.nome}`;
+                                updatedNode.username = `${result.records[0]._fields[0].properties.username}`;
+                                updatedNode.password = `${result.records[0]._fields[0].properties.password}`;
+                                updatedNode.nCC = result.records[0]._fields[0].properties.nCC;
+                                updatedNode.tipo = result.records[0]._fields[0].labels[0];
+                            })
+                            .catch((error) => {
+                                console.log(error);
+                                res.status(400).send("Algo correu mal com a query.");
+                                trans.rollback();
+                            });       
+                    }
+                    if(req.body.partido){
+                        await trans.run(`MATCH (p:Politico)-[r:PERTENCE_A]->(o:Organizacao) WHERE p.id = ${req.params.id} AND o.tipo = 'Partido' MATCH (no:Organizacao) WHERE no.id = ${req.body.partido} AND no.tipo = 'Partido' DELETE r CREATE (p)-[:PERTENCE_A]->(no) RETURN no`)
+                            .then((result) => {
+                                updatedNode.partido = req.body.partido;
+                            })
+                            .catch((error) => {
+                                console.log(error);
+                                res.status(400).send("Algo correu mal com a query.");
+                                trans.rollback();
+                            })
+                    }
+                }
+            })
+    }
+   
+    if(user && (user.tipo == 'Administrador' || (user.id == req.params.id && user.tipo == "Politico"))){
+        refreshToken({id:user.id, username: user.username, tipo: user.tipo}, req.headers.refreshtoken, session, updatedNode).then(() => {
+            pesquisa(statement).then(() => {
+                if(!res.writableEnded){
+                    updatedNode.tokens = generateTokens({id: updatedNode.id, tipo: updatedNode.tipo, username: updatedNode.username, nome: updatedNode.nome}, res);
+                    trans.commit();
+                    res.send(updatedNode);
+                }
+            })
+        });
+    } else {
+        if(!res.writableEnded){
+            res.status(403).send("Este utilizador não tem permissões para efetuar a esta operação.");
+        }
     }
 });
 
@@ -484,7 +889,7 @@ app.delete("/api/logout", (req, res) => {
  *                  description: O utilizador não tem permissões para visualizar as informações deste utilizador ou o token de acesso está fora de validade.
  *               
  *      put:
- *          description: Atualizar informação de um utilizador. Possível quando logged in como esse utilizador ou como um administrador.
+ *          description: Atualizar informação de um utilizador. Possível quando logged in como esse utilizador (caso o utilizador seja um cidadão registado) ou como um administrador, para os restantes casos.
  *          security:
  *              - bearerAuth: []
  *          parameters:
@@ -533,7 +938,9 @@ app.delete("/api/logout", (req, res) => {
  */
 app.get("/api/profile/:tipoUser/:id", (req, res) => {
 
-    var matchedNode = {user: {}, registos: {criados: [], votados: []}, organizacoes: [], eventos: {organizados: [], participados: []}, concursos: {organizados: [], participados: []}, contratos: {propostos: [], assinados: []}};
+    var session = driver.session();
+
+    var matchedNode = {user: {}, registos: {criados: [], votados: [], acerca: []}, organizacoes: [], eventos: {organizados: [], participados: []}, concursos: {organizados: [], participados: [], vencidos: []}, contratos: {propostos: [], assinados: []}};
 
     user = validateToken(req, res);
     
@@ -545,11 +952,11 @@ app.get("/api/profile/:tipoUser/:id", (req, res) => {
                     res.status(404).send("Utilizador não encontrado.");
                     trans.rollback();
                 } else {
-                    matchedNode.user = {id: req.params.id, tipoUser: req.params.tipoUser, nome: result.records[0]._fields[0].properties.nome, username: result.records[0]._fields[0].properties.username, nCC: result.records[0]._fields[0].properties.nCC};
+                    matchedNode.user = {id: req.params.id, tipoUser: req.params.tipoUser, nome: result.records[0]._fields[0].properties.nome, username: result.records[0]._fields[0].properties.username, nCC: result.records[0]._fields[0].properties.nCC.low};
                     await session.run(`MATCH (u:${req.params.tipoUser})-[:PERTENCE_A]->(o:Organizacao) WHERE u.id = ${req.params.id} RETURN o`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.organizacoes.push({id: record._fields[0].properties.id.low});
+                                matchedNode.organizacoes.push({id: record._fields[0].properties.id.low, nome: `${record._fields[0].properties.nome}`});
                             });
                         })
                         .catch((error) => {
@@ -560,7 +967,7 @@ app.get("/api/profile/:tipoUser/:id", (req, res) => {
                     await session.run(`MATCH (u:${req.params.tipoUser})-[:ORGANIZA]->(c:Concurso) WHERE u.id = ${req.params.id} RETURN c`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.concursos.organizados.push({id: record._fields[0].properties.id.low });
+                                matchedNode.concursos.organizados.push({id: record._fields[0].properties.id.low, nome: `${record._fields[0].properties.nome}` });
                             });
                         })
                         .catch((error) => {
@@ -571,7 +978,18 @@ app.get("/api/profile/:tipoUser/:id", (req, res) => {
                     await session.run(`MATCH (u:${req.params.tipoUser})-[:PARTICIPA_EM]->(c:Concurso) WHERE u.id = ${req.params.id} RETURN c`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.concursos.participados.push({id: record._fields[0].properties.id.low });
+                                matchedNode.concursos.participados.push({id: record._fields[0].properties.id.low, nome: `${record._fields[0].properties.nome}` });
+                            });
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })
+
+                    await session.run(`MATCH (u:${req.params.tipoUser})-[:VENCE]->(c:Concurso) WHERE u.id = ${req.params.id} RETURN c`)
+                        .then((result) => {
+                            result.records.forEach((record) => {
+                                matchedNode.concursos.vencidos.push({id: record._fields[0].properties.id.low, nome: `${record._fields[0].properties.nome}` });
                             });
                         })
                         .catch((error) => {
@@ -582,7 +1000,7 @@ app.get("/api/profile/:tipoUser/:id", (req, res) => {
                     await session.run(`MATCH (u:${req.params.tipoUser})-[:PROPOE]->(c:Contrato) WHERE u.id = ${req.params.id} RETURN c`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.contratos.propostos.push({id: record._fields[0].properties.id.low });
+                                matchedNode.contratos.propostos.push({id: record._fields[0].properties.id.low, nome: `${record._fields[0].properties.nome}` });
                             });
                         })
                         .catch((error) => {
@@ -593,7 +1011,7 @@ app.get("/api/profile/:tipoUser/:id", (req, res) => {
                     await session.run(`MATCH (u:${req.params.tipoUser})-[:ASSINA]->(c:Contrato) WHERE u.id = ${req.params.id} RETURN c`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.contratos.assinados.push({id: record._fields[0].properties.id.low });
+                                matchedNode.contratos.assinados.push({id: record._fields[0].properties.id.low, nome: `${record._fields[0].properties.nome}` });
                             });
                         })
                         .catch((error) => {
@@ -604,7 +1022,7 @@ app.get("/api/profile/:tipoUser/:id", (req, res) => {
                     await session.run(`MATCH (u:${req.params.tipoUser})-[:ORGANIZA]->(e:Evento) WHERE u.id = ${req.params.id} RETURN e`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.eventos.organizados.push({id: record._fields[0].properties.id.low });
+                                matchedNode.eventos.organizados.push({id: record._fields[0].properties.id.low, nome: `${record._fields[0].properties.nome}` });
                             });
                         })
                         .catch((error) => {
@@ -615,7 +1033,7 @@ app.get("/api/profile/:tipoUser/:id", (req, res) => {
                     await session.run(`MATCH (u:${req.params.tipoUser})-[:PARTICIPA_EM]->(e:Evento) WHERE u.id = ${req.params.id} RETURN e`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.eventos.participados.push({id: record._fields[0].properties.id.low });
+                                matchedNode.eventos.participados.push({id: record._fields[0].properties.id.low, nome: `${record._fields[0].properties.nome}` });
                             });
                         })
                         .catch((error) => {
@@ -626,7 +1044,7 @@ app.get("/api/profile/:tipoUser/:id", (req, res) => {
                     await session.run(`MATCH (u:${req.params.tipoUser})-[:CRIA]->(r:Registo) WHERE u.id = ${req.params.id} RETURN r`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.registos.criados.push({id: record._fields[0].properties.id.low });
+                                matchedNode.registos.criados.push({id: record._fields[0].properties.id.low, titulo: `${record._fields[0].properties.titulo}` });
                             });
                         })
                         .catch((error) => {
@@ -637,13 +1055,24 @@ app.get("/api/profile/:tipoUser/:id", (req, res) => {
                     await session.run(`MATCH (u:${req.params.tipoUser})-[:VOTA_EM]->(r:Registo) WHERE u.id = ${req.params.id} RETURN r`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.registos.votados.push({id: record._fields[0].properties.id.low });
+                                matchedNode.registos.votados.push({id: record._fields[0].properties.id.low, titulo: `${record._fields[0].properties.titulo}` });
                             });
                         })
                         .catch((error) => {
                             console.log(error);
                             res.status(400).send("Algo correu mal com a query.");
-                        })        
+                        })
+                        
+                    await session.run(`MATCH (u:${req.params.tipoUser})<-[:ACERCA_DE]-(r:Registo) WHERE u.id = ${req.params.id} RETURN r`)
+                        .then((result) => {
+                            result.records.forEach((record) => {
+                                matchedNode.registos.acerca.push({id: record._fields[0].properties.id.low, titulo: `${record._fields[0].properties.titulo}` });
+                            });
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })
                 }
             })
             .catch((error) => {
@@ -668,6 +1097,8 @@ app.get("/api/profile/:tipoUser/:id", (req, res) => {
 });
      
 app.put("/api/profile/:tipoUser/:id", (req, res) => {
+    
+    var session = driver.session();
 
     const result = validateAlterarUser(req.body);
     if(result.error) return res.status(400).send(result.error);
@@ -697,13 +1128,29 @@ app.put("/api/profile/:tipoUser/:id", (req, res) => {
     }
     if(req.body.nCC){
         if(statement.includes("SET")){
-            statement = statement + `, u.nCC = '${req.body.nCC}' `;
+            statement = statement + `, u.nCC = ${req.body.nCC} `;
         } else {
-            statement = statement + `SET u.nCC = '${req.body.nCC}' `;
+            statement = statement + `SET u.nCC = ${req.body.nCC} `;
         }
     }
 
     statement = statement + "RETURN u";
+
+    if(req.body.username || req.body.nCC){
+        var statement2;
+        var errorMessage;
+
+        if(req.body.username && !req.body.nCC){
+            statement2 = `MATCH (n) WHERE n.username = '${req.body.username}' RETURN n`;
+            errorMessage = "Já existe um utilizador com esse username.";
+        } else if(!req.body.username && req.body.nCC){
+            statement2 = `MATCH (n) WHERE n.nCC = ${req.body.nCC} RETURN n`;
+            errorMessage = "Já existe um utilizador com esse cartão de cidadão.";
+        } else if(req.body.username && req.body.nCC){
+            statement2 = `MATCH (n) WHERE n.username = '${req.body.username}' OR n.nCC = ${req.body.nCC} RETURN n`;
+            errorMessage = "Já existe um utilizador com esse username ou cartão de cidadão.";
+        }
+    }
 
     var trans;
 
@@ -717,11 +1164,11 @@ app.put("/api/profile/:tipoUser/:id", (req, res) => {
                     res.status(404).send("Utilizador não encontrado.");
                     trans.rollback();
                 } else {
-                    if(req.body.username){
-                        await trans.run(`MATCH (n) WHERE n.username = '${req.body.username}' RETURN n`)
+                    if(req.body.username || req.body.nCC){
+                        await trans.run(statement2)
                             .then(async (result) => {
                                 if(result.records.length > 0){
-                                    res.status(401).send("Já existe um utilizador com esse username.");
+                                    res.status(401).send(errorMessage);
                                     trans.rollback();
                                 } else {
                                     await trans.run(statement)
@@ -730,7 +1177,8 @@ app.put("/api/profile/:tipoUser/:id", (req, res) => {
                                             updatedNode.nome = `${result.records[0]._fields[0].properties.nome}`;
                                             updatedNode.username = `${result.records[0]._fields[0].properties.username}`;
                                             updatedNode.password = `${result.records[0]._fields[0].properties.password}`;
-                                            updatedNode.nCC = `${result.records[0]._fields[0].properties.nCC}`;
+                                            updatedNode.nCC = result.records[0]._fields[0].properties.nCC;
+                                            updatedNode.tipo = result.records[0]._fields[0].labels[0];
                                         })
                                         .catch((error) => {
                                             console.log(error);
@@ -745,14 +1193,14 @@ app.put("/api/profile/:tipoUser/:id", (req, res) => {
                                 trans.rollback();
                             })
                     } else {
-
                         await trans.run(statement)
                             .then((result) => {
                                 updatedNode.id = req.params.id;
                                 updatedNode.nome = `${result.records[0]._fields[0].properties.nome}`;
                                 updatedNode.username = `${result.records[0]._fields[0].properties.username}`;
                                 updatedNode.password = `${result.records[0]._fields[0].properties.password}`;
-                                updatedNode.nCC = `${result.records[0]._fields[0].properties.nCC}`;  
+                                updatedNode.nCC = result.records[0]._fields[0].properties.nCC;
+                                updatedNode.tipo = result.records[0]._fields[0].labels[0];
                             })
                             .catch((error) => {
                                 console.log(error);
@@ -768,6 +1216,7 @@ app.put("/api/profile/:tipoUser/:id", (req, res) => {
         refreshToken({id:user.id, username: user.username, tipo: user.tipo}, req.headers.refreshtoken, session, updatedNode).then(() => {
             pesquisa(statement).then(() => {
                 if(!res.writableEnded){
+                    updatedNode.tokens = generateTokens({id: updatedNode.id, tipo: updatedNode.tipo, username: updatedNode.username, nome: updatedNode.nome}, res);
                     trans.commit();
                     res.send(updatedNode);
                 }
@@ -810,6 +1259,8 @@ app.put("/api/profile/:tipoUser/:id", (req, res) => {
  *                  description: O utilizador não tem permissões para visualizar as informações deste utilizador ou o token de acesso está fora de validade.
  */   
 app.put("/api/profile/:tipoUser/:id/ativar", (req, res) => {
+
+    var session = driver.session();
 
     user = validateToken(req, res);
 
@@ -938,9 +1389,11 @@ app.put("/api/profile/:tipoUser/:id/ativar", (req, res) => {
  */  
 app.get("/api/registos", (req, res) => {
 
+    var session = driver.session();
+
     var matchedNodes = [];
 
-    var statement = "MATCH (c)-[:ESTA_EM*0..1]->(r:Registo)-[:ACERCA_DE*0..1]->(n)";
+    var statement = "MATCH (c)-[:ESTA_EM*0..1]->(r:Registo)-[:ACERCA_DE*0..1]->(n), (cc:CidadaoCreditado)-[:CRIA]->(r:Registo)";
 
     if(req.query.data){
         switch(req.query.data){
@@ -964,7 +1417,7 @@ app.get("/api/registos", (req, res) => {
         }
     }
 
-    statement = statement + " RETURN distinct r, COUNT(c.id)";
+    statement = statement + " RETURN distinct r, COUNT(c.id), cc";
 
     if(req.query.data){
         if(req.query.data == 'antigoRecente'){
@@ -996,11 +1449,11 @@ app.get("/api/registos", (req, res) => {
                 break;
         }
     }
-
+    
     session.run(statement)
         .then((result) => {
             result.records.forEach((record) => {
-                matchedNodes.push({id: record._fields[0].properties.id.low, titulo: record._fields[0].properties.titulo, descricao: record._fields[0].properties.descricao, data: record._fields[0].properties.data, credibilidade: record._fields[0].properties.credibilidade.low});
+                matchedNodes.push({id: record._fields[0].properties.id.low, titulo: record._fields[0].properties.titulo, descricao: record._fields[0].properties.descricao, data: record._fields[0].properties.data, credibilidade: record._fields[0].properties.credibilidade.low, autor: record._fields[2].properties.nome});
             });
             res.status(200).send(matchedNodes);
         })
@@ -1032,7 +1485,9 @@ app.get("/api/registos", (req, res) => {
  */ 
 app.get("/api/registos/:id", (req, res) => {
 
-    var matchedNode = {registo: {}, autor: {}, comentarios: [], assuntos: []};
+    var session = driver.session();
+
+    var matchedNode = {registo: {}, autor: {}, comentarios: [], assuntos: [], votos: []};
 
     var pesquisa = async () => {
         await session.run(`MATCH (r:Registo) WHERE r.id = ${req.params.id} RETURN r`)
@@ -1055,7 +1510,7 @@ app.get("/api/registos/:id", (req, res) => {
                     await session.run(`MATCH (r:Registo)-[:ACERCA_DE]->(n) WHERE r.id = ${req.params.id} RETURN n`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.assuntos.push({tipo: `${record._fields[0].labels[0]}`, id: record._fields[0].properties.id.low });
+                                matchedNode.assuntos.push({tipo: `${record._fields[0].labels[0]}`, id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
                             });
                         })
                         .catch((error) => {
@@ -1066,13 +1521,24 @@ app.get("/api/registos/:id", (req, res) => {
                     await session.run(`MATCH (n)-[:COMENTA]->(c:Comentario)-[:ESTA_EM]->(r:Registo) WHERE r.id = ${req.params.id} RETURN n, c`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.comentarios.push({id: record._fields[1].properties.id.low, descricao: record._fields[1].properties.descricao, data: record._fields[1].properties.data, autor: record._fields[0].properties.id.low, tipoAutor: record._fields[0].labels[0]});
+                                matchedNode.comentarios.push({id: record._fields[1].properties.id.low, descricao: record._fields[1].properties.descricao, data: record._fields[1].properties.data, autor: record._fields[0].properties.id.low, tipoAutor: record._fields[0].labels[0], nomeAutor: record._fields[0].properties.nome});
                             });
                         })
                         .catch((error) => {
                             console.log(error);
                             res.status(400).send("Algo correu mal com a query.");
-                        })        
+                        })
+                
+                    await session.run(`MATCH (u)-[v:VOTA_EM]->(r:Registo) WHERE r.id = ${req.params.id} RETURN u, v`)
+                        .then((result) => {
+                            result.records.forEach((record) => {
+                                matchedNode.votos.push({id: record._fields[0].properties.id.low, tipo: record._fields[0].labels[0], valor: record._fields[1].properties.valor.low})
+                            });
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        }) 
                 }
             })
             .catch((error) => {
@@ -1090,6 +1556,8 @@ app.get("/api/registos/:id", (req, res) => {
 
 app.post("/api/registos", (req, res) => {
 
+    var session = driver.session();
+
     const result = validateRegisto(req.body);
     if(result.error) return res.status(400).send(result.error);
 
@@ -1106,7 +1574,7 @@ app.post("/api/registos", (req, res) => {
 
         trans = session.beginTransaction();
 
-        await trans.run(`MATCH (c:CidadaoCreditado) WHERE c.id = ${user.id} CREATE (r:Registo {id: ${id}, titulo: '${req.body.titulo}', descricao: '${req.body.descricao}', crediblidade: 1, data: date()}) CREATE (c)-[:CRIA]->(r) RETURN r`)
+        await trans.run(`MATCH (c:CidadaoCreditado) WHERE c.id = ${user.id} CREATE (r:Registo {id: ${id}, titulo: '${req.body.titulo}', descricao: '${req.body.descricao}', credibilidade: 1, data: date()}) CREATE (c)-[:CRIA]->(r) RETURN r`)
             .then((result) => {
                 inserted.registo = {id: id, titulo: `${req.body.titulo}`, descricao: `${req.body.descricao}`, credibilidade: 1, data: result.records[0]._fields[0].properties.data, criador: req.body.criador};
             })
@@ -1193,7 +1661,7 @@ app.post("/api/registos", (req, res) => {
  *                              exclusividade:
  *                                  type: string
  *                                  required: true
- *                                  example: "privado"
+ *                                  example: "Privado"
  *                              dataInicio:
  *                                  type: string
  *                                  required: true
@@ -1234,6 +1702,8 @@ app.post("/api/registos", (req, res) => {
  *             
  */
 app.get("/api/eventos", (req, res) => {
+
+    var session = driver.session();
 
     var matchedNodes = [];
 
@@ -1278,7 +1748,7 @@ app.get("/api/eventos", (req, res) => {
             statement = statement + " ORDER BY e.dataInicio DESC";
         }
     }
-    
+        
     session.run(statement)
         .then((result) => {
             result.records.forEach((record) => {
@@ -1340,7 +1810,7 @@ app.get("/api/eventos", (req, res) => {
  *                              exclusividade:
  *                                  type: string
  *                                  required: true
- *                                  example: "privado"
+ *                                  example: "Privado"
  *                              dataInicio:
  *                                  type: string
  *                                  required: true
@@ -1349,9 +1819,6 @@ app.get("/api/eventos", (req, res) => {
  *                                  type: string
  *                                  required: true
  *                                  example: "2019-12-04"
- *                              organizacao:
- *                                  type: string
- *                                  example: 3
  *                              convidados:
  *                                  type: array
  *                                  required: true
@@ -1392,16 +1859,6 @@ app.get("/api/eventos", (req, res) => {
  *                name: refreshToken
  *              - in: path
  *                name: id
- *          requestBody:
- *              required: true
- *              content:
- *                  application/json:
- *                      schema:
- *                          type: object
- *                          properties:
- *                              organizacao:
- *                                  type: integer
- *                                  example: 2
  * 
  *          responses:
  *              '200':
@@ -1420,8 +1877,10 @@ app.get("/api/eventos", (req, res) => {
  *                  description: Evento não encontrado.  
  */
 app.get("/api/eventos/:id", (req, res) => {
+    
+    var session = driver.session();
 
-    var matchedNode = {evento: {}, organizador: {}, participantes: []};
+    var matchedNode = {evento: {}, organizador: {}, criador: {}, participantes: []};
 
     var pesquisa = async () => {
         await session.run(`MATCH (o)-[:ORGANIZA]->(e:Evento) WHERE e.id = ${req.params.id} RETURN o, e`)
@@ -1429,18 +1888,27 @@ app.get("/api/eventos/:id", (req, res) => {
                 if(result.records.length == 0){
                     res.status(404).send("Evento não encontrado.");
                 } else{
-                    matchedNode.organizador = {id: result.records[0]._fields[0].properties.id.low, tipo: result.records[0]._fields[0].labels[0]};
+                    matchedNode.organizador = {id: result.records[0]._fields[0].properties.id.low, tipo: result.records[0]._fields[0].labels[0], nome: result.records[0]._fields[0].properties.nome};
                     matchedNode.evento = {id: result.records[0]._fields[1].properties.id.low, nome: result.records[0]._fields[1].properties.nome, descricao: result.records[0]._fields[1].properties.descricao, exclusividade: result.records[0]._fields[1].properties.exclusividade, dataInicio: result.records[0]._fields[1].properties.dataInicio, dataFim: result.records[0]._fields[1].properties.dataFim}; 
                     await session.run(`MATCH (p)-[:PARTICIPA_EM]->(e:Evento) WHERE e.id = ${req.params.id} RETURN p`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.participantes.push({id: record._fields[0].properties.id.low, tipo: `${record._fields[0].labels[0]}`})
+                                matchedNode.participantes.push({id: record._fields[0].properties.id.low, tipo: `${record._fields[0].labels[0]}`, nome: record._fields[0].properties.nome})
                             });
                         })
                         .catch((error) => {
                             console.log(error);
                             res.status(400).send("Algo correu mal com a query.");
-                        });    
+                        });
+
+                    await session.run(`MATCH (u)-[r:CRIA]->(e:Evento) WHERE e.id = ${req.params.id} RETURN u`)
+                        .then((result) => {
+                            matchedNode.criador = {id: result.records[0]._fields[0].properties.id.low, tipo: result.records[0]._fields[0].labels[0], nome: result.records[0]._fields[0].properties.nome};
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })   
                 }
             })
             .catch((error) => {
@@ -1457,6 +1925,8 @@ app.get("/api/eventos/:id", (req, res) => {
 });
 
 app.post("/api/eventos", (req, res) => {
+
+    var session = driver.session();
 
     const result = validateEvento(req.body);
     if(result.error) return res.status(400).send(result.error);
@@ -1481,7 +1951,7 @@ app.post("/api/eventos", (req, res) => {
                         res.status(401).send("Não pertence à organização com a qual está a tentar criar o evento.");
                         trans.rollback();
                     } else {
-                        await trans.run(`MATCH (o:Organizacao) WHERE o.id = ${req.body.organizacao} CREATE (e:Evento {id: ${id}, nome: '${req.body.nome}', descricao: '${req.body.descricao}', exclusividade: '${req.body.exclusividade}', dataInicio: date('${req.body.dataInicio}'), dataFim: date('${req.body.dataFim}')}) CREATE (o)-[:ORGANIZA]->(e) RETURN e`)
+                        await trans.run(`MATCH (o:Organizacao) WHERE o.id = ${req.body.organizacao} MATCH (u:${user.tipo}) WHERE u.id = ${user.id} CREATE (e:Evento {id: ${id}, nome: '${req.body.nome}', descricao: '${req.body.descricao}', exclusividade: '${req.body.exclusividade}', dataInicio: date('${req.body.dataInicio}'), dataFim: date('${req.body.dataFim}')}) CREATE (o)-[:ORGANIZA]->(e) CREATE (u)-[:CRIA]->(e) RETURN e`)
                             .then((result) => {
                                 inserted.evento = {id: id, nome: `${req.body.nome}`, descricao: `${req.body.descricao}`, exclusividade: `${req.body.exclusividade}`, dataInicio: `${req.body.dataInicio}`, dataFim: `${req.body.dataFim}`};
                                 inserted.organizador = {id: req.body.organizacao, tipo: `Organizacao`};
@@ -1513,7 +1983,7 @@ app.post("/api/eventos", (req, res) => {
                     trans.rollback();
                 })
         } else {
-            await trans.run(`MATCH (o:${user.tipo}) WHERE o.id = ${user.id} CREATE (e:Evento {id: ${id}, nome: '${req.body.nome}', descricao: '${req.body.descricao}', exclusividade: '${req.body.exclusividade}', dataInicio: date('${req.body.dataInicio}'), dataFim: date('${req.body.dataFim}')}) CREATE (o)-[:ORGANIZA]->(e) RETURN e`)
+            await trans.run(`MATCH (o:${user.tipo}) WHERE o.id = ${user.id} CREATE (e:Evento {id: ${id}, nome: '${req.body.nome}', descricao: '${req.body.descricao}', exclusividade: '${req.body.exclusividade}', dataInicio: date('${req.body.dataInicio}'), dataFim: date('${req.body.dataFim}')}) CREATE (o)-[:ORGANIZA]->(e) CREATE (o)-[:CRIA]->(e) RETURN e`)
                 .then((result) => {
                     inserted.evento = {id: id, nome: `${req.body.nome}`, descricao: `${req.body.descricao}`, exclusividade: `${req.body.exclusividade}`, dataInicio: `${req.body.dataInicio}`, dataFim: `${req.body.dataFim}`};
                     inserted.organizador = {id: user.id, tipo: `${user.tipo}`};
@@ -1558,6 +2028,8 @@ app.post("/api/eventos", (req, res) => {
 
 app.put("/api/eventos/:id", (req, res) => {
 
+    var session = driver.session();
+
     const result = validateAlterarEvento(req.body);
     if(result.error) return res.status(400).send(result.error);
 
@@ -1565,11 +2037,7 @@ app.put("/api/eventos/:id", (req, res) => {
 
     var updatedNode = {evento: {}, convidados: []};
 
-    if(req.body.organizacao){
-        var statement = `MATCH (o:Organizacao)-[:ORGANIZA]->(e:Evento) WHERE e.id = ${req.params.id} AND o.id = ${req.body.organizacao} `;
-    } else {
-        var statement = `MATCH (o:${user.tipo})-[:ORGANIZA]->(e:Evento) WHERE e.id = ${req.params.id} AND o.id = ${user.id} `;
-    }
+    var statement = `MATCH (o:${user.tipo})-[:CRIA]->(e:Evento) WHERE e.id = ${req.params.id} AND o.id = ${user.id} `;
     
     if(req.body.nome){
         statement = statement + `SET e.nome = '${req.body.nome}' `;
@@ -1590,16 +2058,16 @@ app.put("/api/eventos/:id", (req, res) => {
     }
     if(req.body.dataInicio){
         if(statement.includes("SET")){
-            statement = statement + `, e.dataInicio = '${req.body.dataInicio}' `;
+            statement = statement + `, e.dataInicio = date('${req.body.dataInicio}') `;
         } else {
-            statement = statement + `SET e.dataInicio = '${req.body.dataInicio}' `;
+            statement = statement + `SET e.dataInicio = date('${req.body.dataInicio}') `;
         }
     }
     if(req.body.dataFim){
         if(statement.includes("SET")){
-            statement = statement + `, e.dataFim = '${req.body.dataFim}' `;
+            statement = statement + `, e.dataFim = date('${req.body.dataFim}') `;
         } else {
-            statement = statement + `SET e.dataFim = '${req.body.dataFim}' `;
+            statement = statement + `SET e.dataFim = date('${req.body.dataFim}') `;
         }
     }
 
@@ -1611,92 +2079,42 @@ app.put("/api/eventos/:id", (req, res) => {
 
         trans = session.beginTransaction();
 
-        if(req.body.organizacao){
-            await trans.run(`MATCH (u:${user.tipo})-[p:PERTENCE_A]->(o:Organizacao) WHERE u.id = ${user.id} AND o.id = ${req.body.organizacao} RETURN p`)
-                .then(async (result) => {
-                    if(result.records.length == 0){
-                        res.status(401).send("Não pertence à organização com a qual está a tentar alterar o evento.");
-                        trans.rollback();
-                    } else {
-                        await trans.run(statement)
-                            .then(async (result) => {
-                                if(result.records.length == 0){
-                                    res.status(404).send("Evento não encontrado.");
-                                    trans.rollback();
-                                } else {
-                                    updatedNode.evento = {id: req.params.id, nome: `${result.records[0]._fields[0].properties.nome}`, descricao: `${result.records[0]._fields[0].properties.descricao}`, exclusividade: `${result.records[0]._fields[0].properties.exclusividade}`, dataInicio: `${result.records[0]._fields[0].properties.dataInicio}`, dataFim: `${result.records[0]._fields[0].properties.dataFim}`};
-                                    await trans.run(`MATCH (n)-[p:PARTICIPA_EM]->(e:Evento) WHERE e.id = ${req.params.id} DELETE p`)
-                                        .then(async (result) => {
-                                            if(req.body.convidados){
-                                                for(convidado of req.body.convidados){
-                                                    await trans.run(`MATCH (e:Evento) WHERE e.id = ${req.params.id} MATCH (c:${convidado.tipo}) WHERE c.id = ${convidado.id} CREATE (c)-[:PARTICIPA_EM]->(e) RETURN c`)
-                                                        .then((result) => {
-                                                            updatedNode.convidados.push({id: result.records[0]._fields[0].properties.id.low, tipo: result.records[0]._fields[0].labels[0]});
-                                                        })
-                                                        .catch((error) => {
-                                                            console.log(error);
-                                                            res.status(400).send("Algo correu mal com a query.");
-                                                            trans.rollback();
-                                                        });
-                                                }
-                                            }                         
+        
+        await trans.run(statement)
+            .then(async (result) => {
+                if(result.records.length == 0){
+                    res.status(404).send("Evento não encontrado.");
+                    trans.rollback();
+                } else {
+                    updatedNode.evento = {id: req.params.id, nome: `${result.records[0]._fields[0].properties.nome}`, descricao: `${result.records[0]._fields[0].properties.descricao}`, exclusividade: `${result.records[0]._fields[0].properties.exclusividade}`, dataInicio: `${result.records[0]._fields[0].properties.dataInicio}`, dataFim: `${result.records[0]._fields[0].properties.dataFim}`};
+                    await trans.run(`MATCH (n)-[p:PARTICIPA_EM]->(e:Evento) WHERE e.id = ${req.params.id} DELETE p`)
+                        .then(async (result) => {
+                            if(req.body.convidados){
+                                for(convidado of req.body.convidados){
+                                    await trans.run(`MATCH (e:Evento) WHERE e.id = ${req.params.id} MATCH (c:${convidado.tipo}) WHERE c.id = ${convidado.id} CREATE (c)-[:PARTICIPA_EM]->(e) RETURN c`)
+                                        .then((result) => {
+                                            updatedNode.convidados.push({id: result.records[0]._fields[0].properties.id.low, tipo: result.records[0]._fields[0].labels[0]});
                                         })
                                         .catch((error) => {
                                             console.log(error);
                                             res.status(400).send("Algo correu mal com a query.");
                                             trans.rollback();
-                                        });            
+                                        });
                                 }
-                            })
-                            .catch((error) => {
-                                console.log(error);
-                                res.status(400).send("Algo correu mal com a query.");
-                                trans.rollback();
-                            });
-                    }
-                })
-                .catch((error) => {
-                    console.log(error);
-                    res.status(400).send("Algo correu mal com a query.");
-                    trans.rollback();
-                })
-        } else {
-            await trans.run(statement)
-                .then(async (result) => {
-                    if(result.records.length == 0){
-                        res.status(404).send("Evento não encontrado.");
-                        trans.rollback();
-                    } else {
-                        updatedNode.evento = {id: req.params.id, nome: `${result.records[0]._fields[0].properties.nome}`, descricao: `${result.records[0]._fields[0].properties.descricao}`, exclusividade: `${result.records[0]._fields[0].properties.exclusividade}`, dataInicio: `${result.records[0]._fields[0].properties.dataInicio}`, dataFim: `${result.records[0]._fields[0].properties.dataFim}`};
-                        await trans.run(`MATCH (n)-[p:PARTICIPA_EM]->(e:Evento) WHERE e.id = ${req.params.id} DELETE p`)
-                            .then(async (result) => {
-                                if(req.body.convidados){
-                                    for(convidado of req.body.convidados){
-                                        await trans.run(`MATCH (e:Evento) WHERE e.id = ${req.params.id} MATCH (c:${convidado.tipo}) WHERE c.id = ${convidado.id} CREATE (c)-[:PARTICIPA_EM]->(e) RETURN c`)
-                                            .then((result) => {
-                                                updatedNode.convidados.push({id: result.records[0]._fields[0].properties.id.low, tipo: result.records[0]._fields[0].labels[0]});
-                                            })
-                                            .catch((error) => {
-                                                console.log(error);
-                                                res.status(400).send("Algo correu mal com a query.");
-                                                trans.rollback();
-                                            });
-                                    }
-                                }                      
-                            })
-                            .catch((error) => {
-                                console.log(error);
-                                res.status(400).send("Algo correu mal com a query.");
-                                trans.rollback();
-                            });            
-                    }
-                })
-                .catch((error) => {
-                    console.log(error);
-                    res.status(400).send("Algo correu mal com a query.");
-                    trans.rollback();
-                });
-        }
+                            }                      
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                            trans.rollback();
+                        });            
+                }
+            })
+            .catch((error) => {
+                console.log(error);
+                res.status(400).send("Algo correu mal com a query.");
+                trans.rollback();
+            });
     }
 
     if(user && (user.tipo == 'Empresario' ||  user.tipo == 'Politico')){
@@ -1717,6 +2135,8 @@ app.put("/api/eventos/:id", (req, res) => {
 
 app.delete("/api/eventos/:id", (req, res) => {
 
+    var session = driver.session();
+
     const result = validateApagarEvento(req.body);
     if(result.error) return res.status(400).send(result.error);
 
@@ -1725,68 +2145,43 @@ app.delete("/api/eventos/:id", (req, res) => {
     user = validateToken(req, res);
 
     var trans;
+
+    var statement;
+
+    if(user.tipo == "Administrador"){
+        statement = `MATCH (e:Evento) WHERE e.id = ${req.params.id}`;
+    } else {
+        statement = `MATCH (o:${user.tipo})-[:CRIA]->(e:Evento) WHERE e.id = ${req.params.id} AND o.id = ${user.id}`;
+    }
+
+    statement += " WITH e, e.dataInicio AS dataInicio, e.dataFim AS dataFim, e.exclusividade AS exclusividade, e.nome AS nome, e.descricao AS descricao DETACH DELETE e RETURN nome, descricao, exclusividade, dataInicio, dataFim";
     
     var pesquisa = async (user) => {
 
         trans = session.beginTransaction();
 
-        if(req.body.organizacao){
-            await trans.run(`MATCH (u:${user.tipo})-[p:PERTENCE_A]->(o:Organizacao) WHERE u.id = ${user.id} AND o.id = ${req.body.organizacao} RETURN p`)
-                .then(async (result) => {
-                    if(result.records.length == 0){
-                        res.status(401).send("Não pertence à organização com a qual está a tentar apagar o evento.");
-                        trans.rollback();
-                    } else {
-                        await trans.run(`MATCH (o:Organizacao)-[:ORGANIZA]->(e:Evento) WHERE e.id = ${req.params.id} AND o.id = ${req.body.organizacao} WITH e, e.dataInicio AS dataInicio, e.dataFim AS dataFim, e.exclusividade AS exclusividade, e.nome AS nome, e.descricao AS descricao DETACH DELETE e RETURN nome, descricao, exclusividade, dataInicio, dataFim`)
-                            .then((result) => {
-                                if(result.records.length == 0){
-                                    res.status(404).send("Evento não encontrado.");
-                                    trans.rollback();
-                                } else {
-                                    deletedNode.id = req.params.id;
-                                    deletedNode.nome = `${result.records[0]._fields[0]}`;
-                                    deletedNode.descricao = `${result.records[0]._fields[1]}`;
-                                    deletedNode.exclusividade = `${result.records[0]._fields[2]}`;
-                                    deletedNode.dataInicio = `${result.records[0]._fields[3]}`;
-                                    deletedNode.dataFim = `${result.records[0]._fields[4]}`;
-                                }
-                            })
-                            .catch((error) => {
-                                console.log(error);
-                                res.status(400).send("Algo correu mal com a query.");
-                                trans.rollback();
-                            });
-                    }
-                })
-                .catch((error) => {
-                    console.log(error);
-                    res.status(400).send("Algo correu mal com a query.");
+        await trans.run(statement)
+            .then((result) => {
+                if(result.records.length == 0){
+                    res.status(404).send("Evento não encontrado.");
                     trans.rollback();
-                })
-        } else {
-            await trans.run(`MATCH (o:${user.tipo})-[:ORGANIZA]->(e:Evento) WHERE e.id = ${req.params.id} AND o.id = ${user.id} WITH e, e.dataInicio AS dataInicio, e.dataFim AS dataFim, e.exclusividade AS exclusividade, e.nome AS nome, e.descricao AS descricao DETACH DELETE e RETURN nome, descricao, exclusividade, dataInicio, dataFim`)
-                .then((result) => {
-                    if(result.records.length == 0){
-                        res.status(404).send("Evento não encontrado.");
-                        trans.rollback();
-                    } else {
-                        deletedNode.id = req.params.id;
-                        deletedNode.nome = `${result.records[0]._fields[0]}`;
-                        deletedNode.descricao = `${result.records[0]._fields[1]}`;
-                        deletedNode.exclusividade = `${result.records[0]._fields[2]}`;
-                        deletedNode.dataInicio = `${result.records[0]._fields[3]}`;
-                        deletedNode.dataFim = `${result.records[0]._fields[4]}`;
-                    }
-                })
-                .catch((error) => {
-                    console.log(error);
-                    res.status(400).send("Algo correu mal com a query.");
-                    trans.rollback();
-                });     
-        }
+                } else {
+                    deletedNode.id = req.params.id;
+                    deletedNode.nome = `${result.records[0]._fields[0]}`;
+                    deletedNode.descricao = `${result.records[0]._fields[1]}`;
+                    deletedNode.exclusividade = `${result.records[0]._fields[2]}`;
+                    deletedNode.dataInicio = `${result.records[0]._fields[3]}`;
+                    deletedNode.dataFim = `${result.records[0]._fields[4]}`;
+                }
+            })
+            .catch((error) => {
+                console.log(error);
+                res.status(400).send("Algo correu mal com a query.");
+                trans.rollback();
+            });
     }
     
-    if(user && (user.tipo == 'Empresario' ||  user.tipo == 'Politico')){
+    if(user && (user.tipo == 'Empresario' ||  user.tipo == 'Politico' || user.tipo == 'Administrador')){
         refreshToken({id:user.id, username: user.username, tipo: user.tipo}, req.headers.refreshtoken, session, deletedNode).then(() => {
             pesquisa(user).then(() => {
                 if(!res.writableEnded){
@@ -1834,6 +2229,8 @@ app.delete("/api/eventos/:id", (req, res) => {
  */ 
 app.post("/api/eventos/:id/participar", (req, res) => {
 
+    var session = driver.session();
+
     var changedNode = {};
 
     var trans;
@@ -1843,7 +2240,7 @@ app.post("/api/eventos/:id/participar", (req, res) => {
     var pesquisa = async (user) => {
 
         trans = session.beginTransaction();
-
+        
         await trans.run(`MATCH (e:Evento) WHERE e.id = ${req.params.id} RETURN e`)
             .then(async (result) => {
                 if(result.records.length == 0){
@@ -1853,7 +2250,7 @@ app.post("/api/eventos/:id/participar", (req, res) => {
                     await trans.run(`MATCH (u:${user.tipo})-[p:PARTICIPA_EM]->(e:Evento) WHERE e.id = ${req.params.id} AND u.id = ${user.id} WITH p, p AS participacao DELETE p RETURN participacao`)
                         .then(async (result) => {
                             if(result.records.length == 0){
-                                await trans.run(`MATCH (u:${user.tipo}) WHERE u.id = ${user.id} MATCH (e:Evento) WHERE e.id = ${req.params.id} AND e.exclusividade = 'publico' AND e.dataFim < date() CREATE (u)-[:PARTICIPA_EM]->(e) RETURN e`)
+                                await trans.run(`MATCH (u:${user.tipo}) WHERE u.id = ${user.id} MATCH (e:Evento) WHERE e.id = ${req.params.id} AND e.exclusividade = 'Publico' AND e.dataFim > date() CREATE (u)-[:PARTICIPA_EM]->(e) RETURN e`)
                                     .then((result) => {
                                         if(result.records.length == 0){
                                             res.status(401).send("O evento em que está a tentar participar é privado ou já terminou.");
@@ -1951,7 +2348,7 @@ app.post("/api/eventos/:id/participar", (req, res) => {
  *                              tipo:
  *                                  type: string
  *                                  required: true
- *                                  example: "outro"
+ *                                  example: "Outro"
  *                              dataInicio:
  *                                  type: string
  *                                  required: true
@@ -2005,6 +2402,8 @@ app.post("/api/eventos/:id/participar", (req, res) => {
  *                  description: O utilizador não tem permissões para criar um concurso ou o token de acesso está fora de validade.
  */
 app.get("/api/concursos", (req, res) => {
+
+    var session = driver.session();
 
     var matchedNodes = [];
 
@@ -2111,7 +2510,7 @@ app.get("/api/concursos", (req, res) => {
  *                              tipo:
  *                                  type: string
  *                                  required: true
- *                                  example: "outro"
+ *                                  example: "Outro"
  *                              dataInicio:
  *                                  type: string
  *                                  required: true
@@ -2120,9 +2519,6 @@ app.get("/api/concursos", (req, res) => {
  *                                  type: string
  *                                  required: true
  *                                  example: "2019-12-04"
- *                              organizacao:
- *                                  type: string
- *                                  example: 3
  *                              participantes:
  *                                  type: array
  *                                  required: true
@@ -2177,16 +2573,6 @@ app.get("/api/concursos", (req, res) => {
  *                name: refreshToken
  *              - in: path
  *                name: id
- *          requestBody:
- *              required: true
- *              content:
- *                  application/json:
- *                      schema:
- *                          type: object
- *                          properties:
- *                              organizacao:
- *                                  type: integer
- *                                  example: 2
  * 
  *          responses:
  *              '200':
@@ -2206,7 +2592,9 @@ app.get("/api/concursos", (req, res) => {
  */ 
 app.get("/api/concursos/:id", (req, res) => {
 
-    var matchedNode = {concurso: {}, organizador: {}, participantes: [], vencedores: [], contratos: []};
+    var session = driver.session();
+
+    var matchedNode = {concurso: {}, organizador: {}, criador: {}, participantes: [], vencedores: [], contratos: []};
 
     var pesquisa = async () => {
         await session.run(`MATCH (c:Concurso) WHERE c.id = ${req.params.id} RETURN c`)
@@ -2218,8 +2606,17 @@ app.get("/api/concursos/:id", (req, res) => {
                     await session.run(`MATCH (o)-[:ORGANIZA]->(c:Concurso) WHERE c.id = ${req.params.id} RETURN o`)
                         .then((result) => {
                             if(result.records.length > 0){
-                                matchedNode.organizador = {id: result.records[0]._fields[0].properties.id.low, tipo: result.records[0]._fields[0].labels[0]};    
+                                matchedNode.organizador = {id: result.records[0]._fields[0].properties.id.low, tipo: result.records[0]._fields[0].labels[0], nome: result.records[0]._fields[0].properties.nome};    
                             }
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })
+                    
+                    await session.run(`MATCH (u)-[r:CRIA]->(c:Concurso) WHERE c.id = ${req.params.id} RETURN u`)
+                        .then((result) => {
+                            matchedNode.criador = {id: result.records[0]._fields[0].properties.id.low, tipo: result.records[0]._fields[0].labels[0], nome: result.records[0]._fields[0].properties.nome};
                         })
                         .catch((error) => {
                             console.log(error);
@@ -2229,7 +2626,7 @@ app.get("/api/concursos/:id", (req, res) => {
                     await session.run(`MATCH (p)-[:PARTICIPA_EM]->(c:Concurso) WHERE c.id = ${req.params.id} RETURN p`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.participantes.push({tipo: `${record._fields[0].labels[0]}`, id: record._fields[0].properties.id.low });
+                                matchedNode.participantes.push({tipo: `${record._fields[0].labels[0]}`, id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
                             });
                         })
                         .catch((error) => {
@@ -2240,7 +2637,7 @@ app.get("/api/concursos/:id", (req, res) => {
                     await session.run(`MATCH (p)-[:VENCE]->(c:Concurso) WHERE c.id = ${req.params.id} RETURN p`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.vencedores.push({tipo: `${record._fields[0].labels[0]}`, id: record._fields[0].properties.id.low });
+                                matchedNode.vencedores.push({tipo: `${record._fields[0].labels[0]}`, id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
                             });
                         })
                         .catch((error) => {
@@ -2251,7 +2648,7 @@ app.get("/api/concursos/:id", (req, res) => {
                     await session.run(`MATCH (c:Concurso)-[:GERA]->(ca:Contrato) WHERE c.id = ${req.params.id} RETURN ca`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.contratos.push({id: record._fields[0].properties.id.low });
+                                matchedNode.contratos.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
                             });
                         })
                         .catch((error) => {
@@ -2274,6 +2671,8 @@ app.get("/api/concursos/:id", (req, res) => {
 });
 
 app.post("/api/concursos", (req, res) => {
+
+    var session = driver.session();
 
     const result = validateConcurso(req.body);
     if(result.error) return res.status(400).send(result.error);
@@ -2298,7 +2697,7 @@ app.post("/api/concursos", (req, res) => {
                         res.status(401).send("Não pertence à organização com a qual está a tentar criar o concurso.");
 			            trans.rollback();
                     } else {
-                        await trans.run(`MATCH (o:Organizacao) WHERE o.id = ${req.body.organizacao} CREATE (c:Concurso {id: ${id}, nome: '${req.body.nome}', descricao: '${req.body.descricao}', tipo: '${req.body.tipo}', dataInicio: date('${req.body.dataInicio}'), dataFim: date('${req.body.dataFim}')}) CREATE (o)-[:ORGANIZA]->(c) RETURN c`)
+                        await trans.run(`MATCH (o:Organizacao) WHERE o.id = ${req.body.organizacao} MATCH (u:${user.tipo}) WHERE u.id = ${user.id} CREATE (c:Concurso {id: ${id}, nome: '${req.body.nome}', descricao: '${req.body.descricao}', tipo: '${req.body.tipo}', dataInicio: date('${req.body.dataInicio}'), dataFim: date('${req.body.dataFim}')}) CREATE (o)-[:ORGANIZA]->(c) CREATE (u)-[:CRIA]->(c) RETURN c`)
                             .then((result) => {
                                 inserted.concurso = {id: id, nome: `${req.body.nome}`, descricao: `${req.body.descricao}`, tipo: `${req.body.tipo}`, dataInicio: `${req.body.dataInicio}`, dataFim: `${req.body.dataFim}`};
                                 inserted.organizador = {id: req.body.organizacao, tipo: `Organizacao`};
@@ -2344,7 +2743,7 @@ app.post("/api/concursos", (req, res) => {
                     trans.rollback();
                 })
         } else {
-            await trans.run(`MATCH (o:${user.tipo}) WHERE o.id = ${user.id} CREATE (c:Concurso {id: ${id}, nome: '${req.body.nome}', descricao: '${req.body.descricao}', tipo: '${req.body.tipo}', dataInicio: date('${req.body.dataInicio}'), dataFim: date('${req.body.dataFim}')}) CREATE (o)-[:ORGANIZA]->(c) RETURN c`)
+            await trans.run(`MATCH (o:${user.tipo}) WHERE o.id = ${user.id} CREATE (c:Concurso {id: ${id}, nome: '${req.body.nome}', descricao: '${req.body.descricao}', tipo: '${req.body.tipo}', dataInicio: date('${req.body.dataInicio}'), dataFim: date('${req.body.dataFim}')}) CREATE (o)-[:ORGANIZA]->(c) CREATE (o)-[:CRIA]->(c) RETURN c`)
                 .then((result) => {
                     inserted.concurso = {id: id, nome: `${req.body.nome}`, descricao: `${req.body.descricao}`, tipo: `${req.body.tipo}`, dataInicio: `${req.body.dataInicio}`, dataFim: `${req.body.dataFim}`};
                     inserted.organizador = {id: user.id, tipo: `${user.tipo}`};
@@ -2403,6 +2802,8 @@ app.post("/api/concursos", (req, res) => {
 
 app.put("/api/concursos/:id", (req, res) => {
 
+    var session = driver.session();
+
     const result = validateAlterarConcurso(req.body);
     if(result.error) return res.status(400).send(result.error);
 
@@ -2410,11 +2811,7 @@ app.put("/api/concursos/:id", (req, res) => {
 
     var updatedNode = {concurso: {}, participantes: [], vencedores: []};
 
-    if(req.body.organizacao){
-        var statement = `MATCH (o:Organizacao)-[:ORGANIZA]->(c:Concurso) WHERE c.id = ${req.params.id} AND o.id = ${req.body.organizacao} `;
-    } else {
-        var statement = `MATCH (o:${user.tipo})-[:ORGANIZA]->(c:Concurso) WHERE c.id = ${req.params.id} AND o.id = ${user.id} `;
-    }
+    var statement = `MATCH (o:${user.tipo})-[:CRIA]->(c:Concurso) WHERE c.id = ${req.params.id} AND o.id = ${user.id} `;
 
     if(req.body.nome){
         statement = statement + `SET c.nome = '${req.body.nome}' `;
@@ -2435,16 +2832,16 @@ app.put("/api/concursos/:id", (req, res) => {
     }
     if(req.body.dataInicio){
         if(statement.includes("SET")){
-            statement = statement + `, c.dataInicio = '${req.body.dataInicio}' `;
+            statement = statement + `, c.dataInicio = date('${req.body.dataInicio}') `;
         } else {
-            statement = statement + `SET c.dataInicio = '${req.body.dataInicio}' `;
+            statement = statement + `SET c.dataInicio = date('${req.body.dataInicio}') `;
         }
     }
     if(req.body.dataFim){
         if(statement.includes("SET")){
-            statement = statement + `, c.dataFim = '${req.body.dataFim}' `;
+            statement = statement + `, c.dataFim = date('${req.body.dataFim}') `;
         } else {
-            statement = statement + `SET c.dataFim = '${req.body.dataFim}' `;
+            statement = statement + `SET c.dataFim = date('${req.body.dataFim}') `;
         }
     }
 
@@ -2456,136 +2853,63 @@ app.put("/api/concursos/:id", (req, res) => {
 
         trans = session.beginTransaction();
 
-        if(req.body.organizacao){
-            await trans.run(`MATCH (u:${user.tipo})-[p:PERTENCE_A]->(o:Organizacao) WHERE u.id = ${user.id} AND o.id = ${req.body.organizacao} RETURN p`)
-                .then(async (result) => {
-                    if(result.records.length == 0){
-                        res.status(401).send("Não pertence à organização com a qual está a tentar alterar o concurso.");
-			            trans.rollback();
-                    } else {
-                        await trans.run(statement)
-                            .then(async (result) => {
-                                if(result.records.length == 0){
-                                    res.status(404).send("Concurso não encontrado.");
-                                    trans.rollback();
-                                } else {
-                                    updatedNode.concurso = {id: req.params.id, nome: `${result.records[0]._fields[0].properties.nome}`, descricao: `${result.records[0]._fields[0].properties.descricao}`, tipo: `${result.records[0]._fields[0].properties.tipo}`, dataInicio: `${result.records[0]._fields[0].properties.dataInicio}`, dataFim: `${result.records[0]._fields[0].properties.dataFim}`};
-                                    await trans.run(`MATCH (n)-[p:PARTICIPA_EM]->(c:Concurso) WHERE c.id = ${req.params.id} DELETE p`)
-                                        .then(async (result) => {
-                                            if(req.body.participantes){
-                                                for(participante of req.body.participantes){
-                                                    await trans.run(`MATCH (c:Concurso) WHERE c.id = ${req.params.id} MATCH (p:${participante.tipo}) WHERE p.id = ${participante.id} CREATE (p)-[:PARTICIPA_EM]->(c) RETURN p`)
-                                                        .then((result) => {
-                                                            updatedNode.participantes.push({id: result.records[0]._fields[0].properties.id.low, tipo: result.records[0]._fields[0].labels[0]});
-                                                        })
-                                                        .catch((error) => {
-                                                            console.log(error);
-                                                            res.status(400).send("Algo correu mal com a query.");
-                                                            trans.rollback();
-                                                        });
-                                                }
-                                            } 
+        await trans.run(statement)
+            .then(async (result) => {
+                if(result.records.length == 0){
+                    res.status(404).send("Concurso não encontrado.");
+                    trans.rollback();
+                } else {
+                    updatedNode.concurso = {id: req.params.id, nome: `${result.records[0]._fields[0].properties.nome}`, descricao: `${result.records[0]._fields[0].properties.descricao}`, tipo: `${result.records[0]._fields[0].properties.tipo}`, dataInicio: `${result.records[0]._fields[0].properties.dataInicio}`, dataFim: `${result.records[0]._fields[0].properties.dataFim}`};
+                    await trans.run(`MATCH (n)-[p:PARTICIPA_EM]->(c:Concurso) WHERE c.id = ${req.params.id} DELETE p`)
+                        .then(async (result) => {
+                            if(req.body.participantes){
+                                for(participante of req.body.participantes){
+                                    await trans.run(`MATCH (c:Concurso) WHERE c.id = ${req.params.id} MATCH (p:${participante.tipo}) WHERE p.id = ${participante.id} CREATE (p)-[:PARTICIPA_EM]->(c) RETURN p`)
+                                        .then((result) => {
+                                            updatedNode.participantes.push({id: result.records[0]._fields[0].properties.id.low, tipo: result.records[0]._fields[0].labels[0]});
                                         })
                                         .catch((error) => {
                                             console.log(error);
                                             res.status(400).send("Algo correu mal com a query.");
                                             trans.rollback();
                                         });
-            
-                                    await trans.run(`MATCH (n)-[v:VENCE]->(c:Concurso) WHERE c.id = ${req.params.id} DELETE v`)
-                                        .then(async (result) => {
-                                            if(req.body.vencedores){
-                                                for(vencedor of req.body.vencedores){
-                                                    await trans.run(`MATCH (c:Concurso) WHERE c.id = ${req.params.id} MATCH (v:${vencedor.tipo}) WHERE v.id = ${vencedor.id} CREATE (v)-[:VENCE]->(c) RETURN v`)
-                                                        .then((result) => {
-                                                            updatedNode.vencedores.push({id: result.records[0]._fields[0].properties.id.low, tipo: result.records[0]._fields[0].labels[0]});
-                                                        })
-                                                        .catch((error) => {
-                                                            console.log(error);
-                                                            res.status(400).send("Algo correu mal com a query.");
-                                                            trans.rollback();
-                                                        });
-                                                }
-                                            }          
+                                }
+                            } 
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                            trans.rollback();
+                        });
+
+                    await trans.run(`MATCH (n)-[v:VENCE]->(c:Concurso) WHERE c.id = ${req.params.id} DELETE v`)
+                        .then(async (result) => {
+                            if(req.body.vencedores){
+                                for(vencedor of req.body.vencedores){
+                                    await trans.run(`MATCH (c:Concurso) WHERE c.id = ${req.params.id} MATCH (v:${vencedor.tipo}) WHERE v.id = ${vencedor.id} CREATE (v)-[:VENCE]->(c) RETURN v`)
+                                        .then((result) => {
+                                            updatedNode.vencedores.push({id: result.records[0]._fields[0].properties.id.low, tipo: result.records[0]._fields[0].labels[0]});
                                         })
                                         .catch((error) => {
                                             console.log(error);
                                             res.status(400).send("Algo correu mal com a query.");
                                             trans.rollback();
-                                        });  
+                                        });
                                 }
-                            })
-                            .catch((error) => {
-                                console.log(error);
-                                res.status(400).send("Algo correu mal com a query.");
-                                trans.rollback();
-                            }); 
-                    }
-                })
-                .catch((error) => {
-                    console.log(error);
-                    res.status(400).send("Algo correu mal com a query.");
-                    trans.rollback();
-                })
-        } else {
-            await trans.run(statement)
-                .then(async (result) => {
-                    if(result.records.length == 0){
-                        res.status(404).send("Concurso não encontrado.");
-                        trans.rollback();
-                    } else {
-                        updatedNode.concurso = {id: req.params.id, nome: `${result.records[0]._fields[0].properties.nome}`, descricao: `${result.records[0]._fields[0].properties.descricao}`, tipo: `${result.records[0]._fields[0].properties.tipo}`, dataInicio: `${result.records[0]._fields[0].properties.dataInicio}`, dataFim: `${result.records[0]._fields[0].properties.dataFim}`};
-                        await trans.run(`MATCH (n)-[p:PARTICIPA_EM]->(c:Concurso) WHERE c.id = ${req.params.id} DELETE p`)
-                            .then(async (result) => {
-                                if(req.body.participantes){
-                                    for(participante of req.body.participantes){
-                                        await trans.run(`MATCH (c:Concurso) WHERE c.id = ${req.params.id} MATCH (p:${participante.tipo}) WHERE p.id = ${participante.id} CREATE (p)-[:PARTICIPA_EM]->(c) RETURN p`)
-                                            .then((result) => {
-                                                updatedNode.participantes.push({id: result.records[0]._fields[0].properties.id.low, tipo: result.records[0]._fields[0].labels[0]});
-                                            })
-                                            .catch((error) => {
-                                                console.log(error);
-                                                res.status(400).send("Algo correu mal com a query.");
-                                                trans.rollback();
-                                            });
-                                    }
-                                } 
-                            })
-                            .catch((error) => {
-                                console.log(error);
-                                res.status(400).send("Algo correu mal com a query.");
-                                trans.rollback();
-                            });
-
-                        await trans.run(`MATCH (n)-[v:VENCE]->(c:Concurso) WHERE c.id = ${req.params.id} DELETE v`)
-                            .then(async (result) => {
-                                if(req.body.vencedores){
-                                    for(vencedor of req.body.vencedores){
-                                        await trans.run(`MATCH (c:Concurso) WHERE c.id = ${req.params.id} MATCH (v:${vencedor.tipo}) WHERE v.id = ${vencedor.id} CREATE (v)-[:VENCE]->(c) RETURN v`)
-                                            .then((result) => {
-                                                updatedNode.vencedores.push({id: result.records[0]._fields[0].properties.id.low, tipo: result.records[0]._fields[0].labels[0]});
-                                            })
-                                            .catch((error) => {
-                                                console.log(error);
-                                                res.status(400).send("Algo correu mal com a query.");
-                                                trans.rollback();
-                                            });
-                                    }
-                                }          
-                            })
-                            .catch((error) => {
-                                console.log(error);
-                                res.status(400).send("Algo correu mal com a query.");
-                                trans.rollback();
-                            });  
-                    }
-                })
-                .catch((error) => {
-                    console.log(error);
-                    res.status(400).send("Algo correu mal com a query.");
-                    trans.rollback();
-                });    
-        }
+                            }          
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                            trans.rollback();
+                        });  
+                }
+            })
+            .catch((error) => {
+                console.log(error);
+                res.status(400).send("Algo correu mal com a query.");
+                trans.rollback();
+            });  
     }
 
     if(user && (user.tipo == 'Empresario' ||  user.tipo == 'Politico')){
@@ -2606,6 +2930,8 @@ app.put("/api/concursos/:id", (req, res) => {
 
 app.delete("/api/concursos/:id", (req, res) => {
 
+    var session = driver.session();
+
     const result = validateApagarConcurso(req.body);
     if(result.error) return res.status(400).send(result.error);
 
@@ -2615,67 +2941,42 @@ app.delete("/api/concursos/:id", (req, res) => {
 
     var trans;
 
+    var statement;
+
+    if(user.tipo == "Administrador"){
+        statement = `MATCH (c:Concurso) WHERE c.id = ${req.params.id}`;
+    } else {
+        statement = `MATCH (o:${user.tipo})-[:CRIA]->(c:Concurso) WHERE c.id = ${req.params.id} AND o.id = ${user.id}`
+    }
+
+    statement += " WITH c, c.dataInicio AS dataInicio, c.dataFim AS dataFim, c.tipo AS tipo, c.nome AS nome, c.descricao AS descricao DETACH DELETE c RETURN nome, descricao, tipo, dataInicio, dataFim";
+
     var pesquisa = async (user) =>{
 
         trans = session.beginTransaction();
 
-        if(req.body.organizacao){
-            await trans.run(`MATCH (u:${user.tipo})-[p:PERTENCE_A]->(o:Organizacao) WHERE u.id = ${user.id} AND o.id = ${req.body.organizacao} RETURN p`)
-                .then(async (result) => {
-                    if(result.records.length == 0){
-                        res.status(401).send("Não pertence à organização com a qual está a tentar apagar o concurso.");
-			            trans.rollback();
-                    } else {
-                        await trans.run(`MATCH (o:Organizacao)-[:ORGANIZA]->(c:Concurso) WHERE c.id = ${req.params.id} AND o.id = ${req.body.organizacao} WITH c, c.dataInicio AS dataInicio, c.dataFim AS dataFim, c.tipo AS tipo, c.nome AS nome, c.descricao AS descricao DETACH DELETE c RETURN nome, descricao, tipo, dataInicio, dataFim`)
-                            .then((result) => {
-                                if(result.records.length == 0){
-                                    res.status(404).send("Concurso não encontrado.");
-                                    trans.rollback();
-                                } else {
-                                    deletedNode.id = req.params.id;
-                                    deletedNode.nome = `${result.records[0]._fields[0]}`;
-                                    deletedNode.descricao = `${result.records[0]._fields[1]}`;
-                                    deletedNode.tipo = `${result.records[0]._fields[2]}`;
-                                    deletedNode.dataInicio = `${result.records[0]._fields[3]}`;
-                                    deletedNode.dataFim = `${result.records[0]._fields[4]}`;
-                                }
-                            })
-                            .catch((error) => {
-                                console.log(error);
-                                res.status(400).send("Algo correu mal com a query.");
-                                trans.rollback();
-                            });     
-                    }
-                })
-                .catch((error) => {
-                    console.log(error);
-                    res.status(400).send("Algo correu mal com a query.");
+        await trans.run(statement)
+            .then((result) => {
+                if(result.records.length == 0){
+                    res.status(404).send("Concurso não encontrado.");
                     trans.rollback();
-                })
-        } else {
-            await trans.run(`MATCH (o:${user.tipo})-[:ORGANIZA]->(c:Concurso) WHERE c.id = ${req.params.id} AND o.id = ${user.id} WITH c, c.dataInicio AS dataInicio, c.dataFim AS dataFim, c.tipo AS tipo, c.nome AS nome, c.descricao AS descricao DETACH DELETE c RETURN nome, descricao, tipo, dataInicio, dataFim`)
-                .then((result) => {
-                    if(result.records.length == 0){
-                        res.status(404).send("Concurso não encontrado.");
-                        trans.rollback();
-                    } else {
-                        deletedNode.id = req.params.id;
-                        deletedNode.nome = `${result.records[0]._fields[0]}`;
-                        deletedNode.descricao = `${result.records[0]._fields[1]}`;
-                        deletedNode.tipo = `${result.records[0]._fields[2]}`;
-                        deletedNode.dataInicio = `${result.records[0]._fields[3]}`;
-                        deletedNode.dataFim = `${result.records[0]._fields[4]}`;
-                    }
-                })
-                .catch((error) => {
-                    console.log(error);
-                    res.status(400).send("Algo correu mal com a query.");
-                    trans.rollback();
-                });     
-        }
+                } else {
+                    deletedNode.id = req.params.id;
+                    deletedNode.nome = `${result.records[0]._fields[0]}`;
+                    deletedNode.descricao = `${result.records[0]._fields[1]}`;
+                    deletedNode.tipo = `${result.records[0]._fields[2]}`;
+                    deletedNode.dataInicio = `${result.records[0]._fields[3]}`;
+                    deletedNode.dataFim = `${result.records[0]._fields[4]}`;
+                }
+            })
+            .catch((error) => {
+                console.log(error);
+                res.status(400).send("Algo correu mal com a query.");
+                trans.rollback();
+            });    
     }
 
-    if(user && (user.tipo == 'Empresario' ||  user.tipo == 'Politico')){
+    if(user && (user.tipo == 'Empresario' ||  user.tipo == 'Politico' || user.tipo == 'Administrador')){
         refreshToken({id:user.id, username: user.username, tipo: user.tipo}, req.headers.refreshtoken, session, deletedNode).then(() => {
             pesquisa(user).then(() => {
                 if(!res.writableEnded){
@@ -2741,7 +3042,7 @@ app.delete("/api/concursos/:id", (req, res) => {
  *                              tipo:
  *                                  type: string
  *                                  required: true
- *                                  example: "outro"
+ *                                  example: "Outro"
  *                              dataInicio:
  *                                  type: string
  *                                  required: true
@@ -2806,6 +3107,8 @@ app.delete("/api/concursos/:id", (req, res) => {
  *                  description: O utilizador não tem permissões para criar um contrato ou o token de acesso está fora de validade.
  */
 app.get("/api/contratos", (req, res) => {
+
+    var session = driver.session();
 
     var matchedNodes = [];
 
@@ -2916,7 +3219,7 @@ app.get("/api/contratos", (req, res) => {
  *                              tipo:
  *                                  type: string
  *                                  required: true
- *                                  example: "outro"
+ *                                  example: "Outro"
  *                              dataInicio:
  *                                  type: string
  *                                  required: true
@@ -2925,9 +3228,6 @@ app.get("/api/contratos", (req, res) => {
  *                                  type: string
  *                                  required: true
  *                                  example: "2019-12-04"
- *                              organizacao:
- *                                  type: string
- *                                  example: 3
  *                              assinaturas:
  *                                  type: array
  *                                  required: true
@@ -2992,16 +3292,6 @@ app.get("/api/contratos", (req, res) => {
  *                name: refreshToken
  *              - in: path
  *                name: id
- *          requestBody:
- *              required: true
- *              content:
- *                  application/json:
- *                      schema:
- *                          type: object
- *                          properties:
- *                              organizacao:
- *                                  type: integer
- *                                  example: 2
  * 
  *          responses:
  *              '200':
@@ -3021,7 +3311,9 @@ app.get("/api/contratos", (req, res) => {
  */ 
 app.get("/api/contratos/:id", (req, res) => {
 
-    var matchedNode = {contrato: {}, proposicoes: [], assinaturas: [], concursos: []};
+    var session = driver.session();
+
+    var matchedNode = {contrato: {}, criador: {}, proposicoes: [], assinaturas: [], concursos: []};
 
     var pesquisa = async () => {
         await session.run(`MATCH (c:Contrato) WHERE c.id = ${req.params.id} RETURN c`)
@@ -3033,8 +3325,20 @@ app.get("/api/contratos/:id", (req, res) => {
                     await session.run(`MATCH (p)-[:PROPOE]->(c:Contrato) WHERE c.id = ${req.params.id} RETURN p`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.proposicoes.push({tipo: `${record._fields[0].labels[0]}`, id: record._fields[0].properties.id.low });
+                                matchedNode.proposicoes.push({tipo: `${record._fields[0].labels[0]}`, id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
                             });
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })
+
+                    await session.run(`MATCH (u)-[r:CRIA]->(c:Contrato) WHERE c.id = ${req.params.id} RETURN u, r`)
+                        .then((result) => {
+                            matchedNode.criador = {id: result.records[0]._fields[0].properties.id.low, tipo: result.records[0]._fields[0].labels[0], nome: result.records[0]._fields[0].properties.nome};
+                            if(result.records[0]._fields[1].properties.org){
+                                matchedNode.criador.org = result.records[0]._fields[1].properties.org.low;
+                            }
                         })
                         .catch((error) => {
                             console.log(error);
@@ -3044,7 +3348,7 @@ app.get("/api/contratos/:id", (req, res) => {
                     await session.run(`MATCH (a)-[:ASSINA]->(c:Contrato) WHERE c.id = ${req.params.id} RETURN a`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.assinaturas.push({tipo: `${record._fields[0].labels[0]}`, id: record._fields[0].properties.id.low });
+                                matchedNode.assinaturas.push({tipo: `${record._fields[0].labels[0]}`, id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
                             });
                         })
                         .catch((error) => {
@@ -3055,7 +3359,7 @@ app.get("/api/contratos/:id", (req, res) => {
                     await session.run(`MATCH (co:Concurso)-[:GERA]->(c:Contrato) WHERE c.id = ${req.params.id} RETURN co`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.concursos.push({id: record._fields[0].properties.id.low});
+                                matchedNode.concursos.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome});
                             });
                         })
                         .catch((error) => {
@@ -3078,6 +3382,8 @@ app.get("/api/contratos/:id", (req, res) => {
 });
 
 app.post("/api/contratos", (req, res) => {
+
+    var session = driver.session();
 
     const result = validateContrato(req.body);
     if(result.error) return res.status(400).send(result.error);
@@ -3102,7 +3408,7 @@ app.post("/api/contratos", (req, res) => {
                         res.status(401).send("Não pertence à organização com a qual está a tentar criar o contrato.");
 			            trans.rollback();
                     } else {
-                        await trans.run(`CREATE (c:Contrato {id: ${id}, nome: '${req.body.nome}', descricao: '${req.body.descricao}', conclusao: '${req.body.conclusao}', tipo: '${req.body.tipo}', dataInicio: date('${req.body.dataInicio}'), dataFim: date('${req.body.dataFim}')}) RETURN c`)
+                        await trans.run(`MATCH (u:${user.tipo}) WHERE u.id = ${user.id} CREATE (c:Contrato {id: ${id}, nome: '${req.body.nome}', descricao: '${req.body.descricao}', conclusao: '${req.body.conclusao}', tipo: '${req.body.tipo}', dataInicio: date('${req.body.dataInicio}'), dataFim: date('${req.body.dataFim}')}) CREATE (u)-[:CRIA {org: ${req.body.organizacao}}]->(c) RETURN c`)
                             .then((result) => {
                                 inserted.contrato = {id: result.records[0]._fields[0].properties.id.low, nome: result.records[0]._fields[0].properties.nome, descricao: result.records[0]._fields[0].properties.descricao, conclusao: result.records[0]._fields[0].properties.conclusao, dataInicio: result.records[0]._fields[0].properties.dataInicio, dataFim: result.records[0]._fields[0].properties.dataFim, tipo: result.records[0]._fields[0].properties.tipo};
                             })
@@ -3144,7 +3450,6 @@ app.post("/api/contratos", (req, res) => {
                             for(concurso of req.body.concursos){
                                 await trans.run(`MATCH (c:Contrato) WHERE c.id = ${id} MATCH (co:Concurso) WHERE co.id = ${concurso.id} CREATE (co)-[:GERA]->(c) RETURN co`)
                                     .then((result) => {
-                                        console.log(result.records[0])
                                         inserted.concursos.push({id: result.records[0]._fields[0].properties.id.low});
                                     })
                                     .catch((error) => {
@@ -3162,7 +3467,7 @@ app.post("/api/contratos", (req, res) => {
                     trans.rollback();
                 })
         } else {
-            await trans.run(`CREATE (c:Contrato {id: ${id}, nome: '${req.body.nome}', descricao: '${req.body.descricao}', conclusao: '${req.body.conclusao}', tipo: '${req.body.tipo}', dataInicio: date('${req.body.dataInicio}'), dataFim: date('${req.body.dataFim}')}) RETURN c`)
+            await trans.run(`MATCH (u:${user.tipo}) WHERE u.id = ${user.id} CREATE (c:Contrato {id: ${id}, nome: '${req.body.nome}', descricao: '${req.body.descricao}', conclusao: '${req.body.conclusao}', tipo: '${req.body.tipo}', dataInicio: date('${req.body.dataInicio}'), dataFim: date('${req.body.dataFim}')}) CREATE (u)-[:CRIA]->(c) RETURN c`)
                 .then((result) => {
                     inserted.contrato = {id: result.records[0]._fields[0].properties.id.low, nome: result.records[0]._fields[0].properties.nome, descricao: result.records[0]._fields[0].properties.descricao, conclusao: result.records[0]._fields[0].properties.conclusao, dataInicio: result.records[0]._fields[0].properties.dataInicio, dataFim: result.records[0]._fields[0].properties.dataFim, tipo: result.records[0]._fields[0].properties.tipo};
                 })
@@ -3176,7 +3481,6 @@ app.post("/api/contratos", (req, res) => {
                 for(assinatura of req.body.assinaturas){
                     await trans.run(`MATCH (c:Contrato) WHERE c.id = ${id} MATCH (a:${assinatura.tipo}) WHERE a.id = ${assinatura.id} CREATE (a)-[:ASSINA]->(c) RETURN a`)
                         .then((result) => {
-                            console.log(result.records);
                             inserted.assinaturas.push({id: result.records[0]._fields[0].properties.id.low, tipo: `${result.records[0]._fields[0].labels[0]}`});
                         })
                         .catch((error) => {
@@ -3235,6 +3539,8 @@ app.post("/api/contratos", (req, res) => {
 
 app.put("/api/contratos/:id", (req, res) => {
 
+    var session = driver.session();
+
     const result = validateAlterarContrato(req.body);
     if(result.error) return res.status(400).send(result.error);
 
@@ -3242,12 +3548,8 @@ app.put("/api/contratos/:id", (req, res) => {
 
     var updatedNode = {contrato: {}, assinaturas: [], concursos: [], proposicoes: []};
 
-    if(req.body.organizacao){
-        var statement = `MATCH (p:Organizacao)-[:PROPOE]->(c:Contrato) WHERE c.id = ${req.params.id} AND p.id = ${req.body.organizacao} `;
-    } else {
-        var statement = `MATCH (p:${user.tipo})-[:PROPOE]->(c:Contrato) WHERE c.id = ${req.params.id} AND p.id = ${user.id} `;
-    }
-
+    var statement = `MATCH (p:${user.tipo})-[:CRIA]->(c:Contrato) WHERE c.id = ${req.params.id} AND p.id = ${user.id} `;
+    
     if(req.body.nome){
         statement = statement + `SET c.nome = '${req.body.nome}' `;
     }
@@ -3274,16 +3576,16 @@ app.put("/api/contratos/:id", (req, res) => {
     }
     if(req.body.dataInicio){
         if(statement.includes("SET")){
-            statement = statement + `, c.dataInicio = '${req.body.dataInicio}' `;
+            statement = statement + `, c.dataInicio = date('${req.body.dataInicio}') `;
         } else {
-            statement = statement + `SET c.dataInicio = '${req.body.dataInicio}' `;
+            statement = statement + `SET c.dataInicio = date('${req.body.dataInicio}') `;
         }
     }
     if(req.body.dataFim){
         if(statement.includes("SET")){
-            statement = statement + `, c.dataFim = '${req.body.dataFim}' `;
+            statement = statement + `, c.dataFim = date('${req.body.dataFim}') `;
         } else {
-            statement = statement + `SET c.dataFim = '${req.body.dataFim}' `;
+            statement = statement + `SET c.dataFim = date('${req.body.dataFim}') `;
         }
     }
 
@@ -3295,180 +3597,85 @@ app.put("/api/contratos/:id", (req, res) => {
 
         trans = session.beginTransaction();
 
-        if(req.body.organizacao){
-            await trans.run(`MATCH (u:${user.tipo})-[p:PERTENCE_A]->(o:Organizacao) WHERE u.id = ${user.id} AND o.id = ${req.body.organizacao} RETURN p`)
-                .then(async (result) => {
-                    if(result.records.length == 0){
-                        res.status(401).send("Não pertence à organização com a qual está a tentar criar o concurso.");
-			            trans.rollback();
-                    } else {
-                        await trans.run(statement)
-                            .then(async (result) => {
-                                if(result.records.length == 0){
-                                    res.status(404).send("Contrato não encontrado.");
-                                    trans.rollback();
-                                } else {
-                                    updatedNode.contrato = {id: req.params.id, nome: `${result.records[0]._fields[0].properties.nome}`, descricao: `${result.records[0]._fields[0].properties.descricao}`, conclusao: `${result.records[0]._fields[0].properties.conclusao}`, tipo: `${result.records[0]._fields[0].properties.tipo}`, dataInicio: `${result.records[0]._fields[0].properties.dataInicio}`, dataFim: `${result.records[0]._fields[0].properties.dataFim}`};
-                                    await trans.run(`MATCH (n)-[a:ASSINA]->(c:Contrato) WHERE c.id = ${req.params.id} DELETE a`)
-                                        .then(async (result) => {
-                                            if(req.body.assinaturas){
-                                                for(assinatura of req.body.assinaturas){
-                                                    await trans.run(`MATCH (c:Contrato) WHERE c.id = ${req.params.id} MATCH (a:${assinatura.tipo}) WHERE a.id = ${assinatura.id} CREATE (a)-[:ASSINA]->(c) RETURN a`)
-                                                        .then((result) => {
-                                                            updatedNode.assinaturas.push({id: result.records[0]._fields[0].properties.id.low, tipo: result.records[0]._fields[0].labels[0]});
-                                                        })
-                                                        .catch((error) => {
-                                                            console.log(error);
-                                                            res.status(400).send("Algo correu mal com a query.");
-                                                            trans.rollback();
-                                                        });
-                                                }
-                                            }         
+        await trans.run(statement)
+            .then(async (result) => {
+                if(result.records.length == 0){
+                    res.status(404).send("Contrato não encontrado.");
+                    trans.rollback();
+                } else {
+                    updatedNode.contrato = {id: req.params.id, nome: `${result.records[0]._fields[0].properties.nome}`, descricao: `${result.records[0]._fields[0].properties.descricao}`, conclusao: `${result.records[0]._fields[0].properties.conclusao}`, tipo: `${result.records[0]._fields[0].properties.tipo}`, dataInicio: `${result.records[0]._fields[0].properties.dataInicio}`, dataFim: `${result.records[0]._fields[0].properties.dataFim}`};
+                    await trans.run(`MATCH (n)-[a:ASSINA]->(c:Contrato) WHERE c.id = ${req.params.id} DELETE a`)
+                        .then(async (result) => {
+                            if(req.body.assinaturas){
+                                for(assinatura of req.body.assinaturas){
+                                    await trans.run(`MATCH (c:Contrato) WHERE c.id = ${req.params.id} MATCH (a:${assinatura.tipo}) WHERE a.id = ${assinatura.id} CREATE (a)-[:ASSINA]->(c) RETURN a`)
+                                        .then((result) => {
+                                            updatedNode.assinaturas.push({id: result.records[0]._fields[0].properties.id.low, tipo: result.records[0]._fields[0].labels[0]});
                                         })
                                         .catch((error) => {
                                             console.log(error);
                                             res.status(400).send("Algo correu mal com a query.");
                                             trans.rollback();
                                         });
-            
-                                    await trans.run(`MATCH (n)-[p:PROPOE]->(c:Contrato) WHERE c.id = ${req.params.id} DELETE p`)
-                                        .then(async (result) => {
-                                            if(req.body.proposicoes){
-                                                for(proposicao of req.body.proposicoes){
-                                                    await trans.run(`MATCH (c:Contrato) WHERE c.id = ${req.params.id} MATCH (p:${proposicao.tipo}) WHERE p.id = ${proposicao.id} CREATE (p)-[:PROPOE]->(c) RETURN p`)
-                                                        .then((result) => {
-                                                            updatedNode.proposicoes.push({id: result.records[0]._fields[0].properties.id.low, tipo: result.records[0]._fields[0].labels[0]});
-                                                        })
-                                                        .catch((error) => {
-                                                            console.log(error);
-                                                            res.status(400).send("Algo correu mal com a query.");
-                                                            trans.rollback();
-                                                        });
-                                                }
-                                            }         
-                                        })
-                                        .catch((error) => {
-                                            console.log(error);
-                                            res.status(400).send("Algo correu mal com a query.");
-                                            trans.rollback();
-                                        });
-            
-                                    await trans.run(`MATCH (n:Concurso)-[g:GERA]->(c:Contrato) WHERE c.id = ${req.params.id} DELETE g`)
-                                        .then(async (result) => {
-                                            if(req.body.concursos){
-                                                for(concurso of req.body.concursos){
-                                                    await trans.run(`MATCH (c:Contrato) WHERE c.id = ${req.params.id} MATCH (co:Concurso) WHERE co.id = ${concurso.id} CREATE (co)-[:GERA]->(c) RETURN co`)
-                                                        .then((result) => {
-                                                            updatedNode.concursos.push({id: result.records[0]._fields[0].properties.id.low});
-                                                        })
-                                                        .catch((error) => {
-                                                            console.log(error);
-                                                            res.status(400).send("Algo correu mal com a query.");
-                                                            trans.rollback();
-                                                        });
-                                                }
-                                            }           
-                                        })
-                                        .catch((error) => {
-                                            console.log(error);
-                                            res.status(400).send("Algo correu mal com a query.");
-                                            trans.rollback();
-                                        }); 
                                 }
-                            })
-                            .catch((error) => {
-                                console.log(error);
-                                res.status(400).send("Algo correu mal com a query.");
-                                trans.rollback();
-                            });    
-                    }
-                })
-                .catch((error) => {
-                    console.log(error);
-                    res.status(400).send("Algo correu mal com a query.");
-                    trans.rollback();
-                })
-        } else {
-            await trans.run(statement)
-                .then(async (result) => {
-                    if(result.records.length == 0){
-                        res.status(404).send("Contrato não encontrado.");
-                        trans.rollback();
-                    } else {
-                        updatedNode.contrato = {id: req.params.id, nome: `${result.records[0]._fields[0].properties.nome}`, descricao: `${result.records[0]._fields[0].properties.descricao}`, conclusao: `${result.records[0]._fields[0].properties.conclusao}`, tipo: `${result.records[0]._fields[0].properties.tipo}`, dataInicio: `${result.records[0]._fields[0].properties.dataInicio}`, dataFim: `${result.records[0]._fields[0].properties.dataFim}`};
-                        await trans.run(`MATCH (n)-[a:ASSINA]->(c:Contrato) WHERE c.id = ${req.params.id} DELETE a`)
-                            .then(async (result) => {
-                                if(req.body.assinaturas){
-                                    for(assinatura of req.body.assinaturas){
-                                        await trans.run(`MATCH (c:Contrato) WHERE c.id = ${req.params.id} MATCH (a:${assinatura.tipo}) WHERE a.id = ${assinatura.id} CREATE (a)-[:ASSINA]->(c) RETURN a`)
-                                            .then((result) => {
-                                                updatedNode.assinaturas.push({id: result.records[0]._fields[0].properties.id.low, tipo: result.records[0]._fields[0].labels[0]});
-                                            })
-                                            .catch((error) => {
-                                                console.log(error);
-                                                res.status(400).send("Algo correu mal com a query.");
-                                                trans.rollback();
-                                            });
-                                    }
-                                }         
-                            })
-                            .catch((error) => {
-                                console.log(error);
-                                res.status(400).send("Algo correu mal com a query.");
-                                trans.rollback();
-                            });
+                            }         
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                            trans.rollback();
+                        });
 
-                        await trans.run(`MATCH (n)-[p:PROPOE]->(c:Contrato) WHERE c.id = ${req.params.id} DELETE p`)
-                            .then(async (result) => {
-                                if(req.body.proposicoes){
-                                    for(proposicao of req.body.proposicoes){
-                                        await trans.run(`MATCH (c:Contrato) WHERE c.id = ${req.params.id} MATCH (p:${proposicao.tipo}) WHERE p.id = ${proposicao.id} CREATE (p)-[:PROPOE]->(c) RETURN p`)
-                                            .then((result) => {
-                                                updatedNode.proposicoes.push({id: result.records[0]._fields[0].properties.id.low, tipo: result.records[0]._fields[0].labels[0]});
-                                            })
-                                            .catch((error) => {
-                                                console.log(error);
-                                                res.status(400).send("Algo correu mal com a query.");
-                                                trans.rollback();
-                                            });
-                                    }
-                                }         
-                            })
-                            .catch((error) => {
-                                console.log(error);
-                                res.status(400).send("Algo correu mal com a query.");
-                                trans.rollback();
-                            });
+                    await trans.run(`MATCH (n)-[p:PROPOE]->(c:Contrato) WHERE c.id = ${req.params.id} DELETE p`)
+                        .then(async (result) => {
+                            if(req.body.proposicoes){
+                                for(proposicao of req.body.proposicoes){
+                                    await trans.run(`MATCH (c:Contrato) WHERE c.id = ${req.params.id} MATCH (p:${proposicao.tipo}) WHERE p.id = ${proposicao.id} CREATE (p)-[:PROPOE]->(c) RETURN p`)
+                                        .then((result) => {
+                                            updatedNode.proposicoes.push({id: result.records[0]._fields[0].properties.id.low, tipo: result.records[0]._fields[0].labels[0]});
+                                        })
+                                        .catch((error) => {
+                                            console.log(error);
+                                            res.status(400).send("Algo correu mal com a query.");
+                                            trans.rollback();
+                                        });
+                                }
+                            }         
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                            trans.rollback();
+                        });
 
-                        await trans.run(`MATCH (n:Concurso)-[g:GERA]->(c:Contrato) WHERE c.id = ${req.params.id} DELETE g`)
-                            .then(async (result) => {
-                                if(req.body.concursos){
-                                    for(concurso of req.body.concursos){
-                                        await trans.run(`MATCH (c:Contrato) WHERE c.id = ${req.params.id} MATCH (co:Concurso) WHERE co.id = ${concurso.id} CREATE (co)-[:GERA]->(c) RETURN co`)
-                                            .then((result) => {
-                                                updatedNode.concursos.push({id: result.records[0]._fields[0].properties.id.low});
-                                            })
-                                            .catch((error) => {
-                                                console.log(error);
-                                                res.status(400).send("Algo correu mal com a query.");
-                                                trans.rollback();
-                                            });
-                                    }
-                                }           
-                            })
-                            .catch((error) => {
-                                console.log(error);
-                                res.status(400).send("Algo correu mal com a query.");
-                                trans.rollback();
-                            }); 
-                    }
-                })
-                .catch((error) => {
-                    console.log(error);
-                    res.status(400).send("Algo correu mal com a query.");
-                    trans.rollback();
-                });    
-        }
+                    await trans.run(`MATCH (n:Concurso)-[g:GERA]->(c:Contrato) WHERE c.id = ${req.params.id} DELETE g`)
+                        .then(async (result) => {
+                            if(req.body.concursos){
+                                for(concurso of req.body.concursos){
+                                    await trans.run(`MATCH (c:Contrato) WHERE c.id = ${req.params.id} MATCH (co:Concurso) WHERE co.id = ${concurso.id} CREATE (co)-[:GERA]->(c) RETURN co`)
+                                        .then((result) => {
+                                             updatedNode.concursos.push({id: result.records[0]._fields[0].properties.id.low});
+                                        })
+                                        .catch((error) => {
+                                            console.log(error);
+                                            res.status(400).send("Algo correu mal com a query.");
+                                            trans.rollback();
+                                        });
+                                }
+                            }           
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                            trans.rollback();
+                        }); 
+                }
+            })
+            .catch((error) => {
+                console.log(error);
+                res.status(400).send("Algo correu mal com a query.");
+                trans.rollback();
+            });
     }
 
     if(user && (user.tipo == 'Empresario' ||  user.tipo == 'Politico')){
@@ -3489,6 +3696,8 @@ app.put("/api/contratos/:id", (req, res) => {
 
 app.delete("/api/contratos/:id", (req, res) => {
 
+    var session = driver.session();
+
     const result = validateApagarContrato(req.body);
     if(result.error) return res.status(400).send(result.error);
 
@@ -3497,70 +3706,44 @@ app.delete("/api/contratos/:id", (req, res) => {
     var deletedNode = {};
 
     var trans;
+
+    var statement;
+
+    if(user.tipo == "Administrador"){
+        statement = `MATCH (c:Contrato) WHERE c.id = ${req.params.id}`;
+    } else {
+        statement = `MATCH (p:${user.tipo})-[:CRIA]->(c:Contrato) WHERE c.id = ${req.params.id} AND p.id = ${user.id}`;
+    }
+
+    statement += " WITH c, c.dataInicio AS dataInicio, c.dataFim AS dataFim, c.tipo AS tipo, c.nome AS nome, c.descricao AS descricao, c.conclusao AS conclusao DETACH DELETE c RETURN nome, descricao, conclusao, tipo, dataInicio, dataFim";
     
     var pesquisa = async (user) => {
 
         trans = session.beginTransaction();
 
-        if(req.body.organizacao){
-            await trans.run(`MATCH (u:${user.tipo})-[p:PERTENCE_A]->(o:Organizacao) WHERE u.id = ${user.id} AND o.id = ${req.body.organizacao} RETURN p`)
-                .then(async (result) => {
-                    if(result.records.length == 0){
-                        res.status(401).send("Não pertence à organização com a qual está a tentar criar o concurso.");
-			            trans.rollback();
-                    } else {
-                        await trans.run(`MATCH (p:Organizacao)-[:PROPOE]->(c:Contrato) WHERE c.id = ${req.params.id} AND p.id = ${req.body.organizacao} WITH c, c.dataInicio AS dataInicio, c.dataFim AS dataFim, c.tipo AS tipo, c.nome AS nome, c.descricao AS descricao, c.conclusao AS conclusao DETACH DELETE c RETURN nome, descricao, conclusao, tipo, dataInicio, dataFim`)
-                            .then((result) => {
-                                if(result.records.length == 0){
-                                    res.status(404).send("Contrato não encontrado.");
-                                    trans.rollback();
-                                } else {
-                                    deletedNode.id = req.params.id;
-                                    deletedNode.nome = `${result.records[0]._fields[0]}`;
-                                    deletedNode.descricao = `${result.records[0]._fields[1]}`;
-                                    deletedNode.conclusao = `${result.records[0]._fields[2]}`;
-                                    deletedNode.tipo = `${result.records[0]._fields[3]}`;
-                                    deletedNode.dataInicio = `${result.records[0]._fields[4]}`;
-                                    deletedNode.dataFim = `${result.records[0]._fields[5]}`;
-                                }
-                            })
-                            .catch((error) => {
-                                console.log(error);
-                                res.status(400).send("Algo correu mal com a query.");
-                                trans.rollback();
-                            });     
-                    }
-                })
-                .catch((error) => {
-                    console.log(error);
-                    res.status(400).send("Algo correu mal com a query.");
+        await trans.run(statement)
+            .then((result) => {
+                if(result.records.length == 0){
+                    res.status(404).send("Contrato não encontrado.");
                     trans.rollback();
-                })
-        } else {
-            await trans.run(`MATCH (p:${user.tipo})-[:PROPOE]->(c:Contrato) WHERE c.id = ${req.params.id} AND p.id = ${user.id} WITH c, c.dataInicio AS dataInicio, c.dataFim AS dataFim, c.tipo AS tipo, c.nome AS nome, c.descricao AS descricao, c.conclusao AS conclusao DETACH DELETE c RETURN nome, descricao, conclusao, tipo, dataInicio, dataFim`)
-                .then((result) => {
-                    if(result.records.length == 0){
-                        res.status(404).send("Contrato não encontrado.");
-                        trans.rollback();
-                    } else {
-                        deletedNode.id = req.params.id;
-                        deletedNode.nome = `${result.records[0]._fields[0]}`;
-                        deletedNode.descricao = `${result.records[0]._fields[1]}`;
-                        deletedNode.conclusao = `${result.records[0]._fields[2]}`;
-                        deletedNode.tipo = `${result.records[0]._fields[3]}`;
-                        deletedNode.dataInicio = `${result.records[0]._fields[4]}`;
-                        deletedNode.dataFim = `${result.records[0]._fields[5]}`;
-                    }
-                })
-                .catch((error) => {
-                    console.log(error);
-                    res.status(400).send("Algo correu mal com a query.");
-                    trans.rollback();
-                });      
-        }
+                } else {
+                    deletedNode.id = req.params.id;
+                    deletedNode.nome = `${result.records[0]._fields[0]}`;
+                    deletedNode.descricao = `${result.records[0]._fields[1]}`;
+                    deletedNode.conclusao = `${result.records[0]._fields[2]}`;
+                    deletedNode.tipo = `${result.records[0]._fields[3]}`;
+                    deletedNode.dataInicio = `${result.records[0]._fields[4]}`;
+                    deletedNode.dataFim = `${result.records[0]._fields[5]}`;
+                }
+            })
+            .catch((error) => {
+                console.log(error);
+                res.status(400).send("Algo correu mal com a query.");
+                trans.rollback();
+            });
     }
 
-    if(user && (user.tipo == 'Empresario' ||  user.tipo == 'Politico')){
+    if(user && (user.tipo == 'Empresario' ||  user.tipo == 'Politico' || user.tipo == 'Administrador')){
         refreshToken({id:user.id, username: user.username, tipo: user.tipo}, req.headers.refreshtoken, session, deletedNode).then(() => {
             pesquisa(user).then(() => {
                 if(!res.writableEnded){
@@ -3599,9 +3782,11 @@ app.delete("/api/contratos/:id", (req, res) => {
  */ 
 app.get("/api/politicos", (req, res) => {
 
+    var session = driver.session();
+
     var matchedNodes = [];
 
-    var statement = "MATCH (p:Politico)";
+    var statement = "MATCH (p:Politico)-[:PERTENCE_A*0..1]->(o:Organizacao) WHERE o.tipo='Partido'";
 
     if(req.query.partido){
         statement = `MATCH (p:Politico)-[:PERTENCE_A]->(o:Organizacao) WHERE o.id = ${req.query.partido} AND o.tipo='Partido'`
@@ -3623,12 +3808,12 @@ app.get("/api/politicos", (req, res) => {
         }
     }
 
-    statement = statement + " RETURN p";
+    statement = statement + " RETURN p, o";
     
     session.run(statement)
         .then((result) => {
             result.records.forEach((record) => {
-                matchedNodes.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome, username: record._fields[0].properties.username, circuloEleitoral: record._fields[0].properties.circuloEleitoral, habilitacoes: record._fields[0].properties.habilitacoes, nCC: record._fields[0].properties.nCC});
+                matchedNodes.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome, username: record._fields[0].properties.username, circuloEleitoral: record._fields[0].properties.circuloEleitoral, habilitacoes: record._fields[0].properties.habilitacoes, nCC: record._fields[0].properties.nCC.low, partido: record._fields[1].properties.nome, ativo: record._fields[0].properties.ativo});
             });
             res.send(matchedNodes);
         })
@@ -3660,7 +3845,9 @@ app.get("/api/politicos", (req, res) => {
  */ 
 app.get("/api/politicos/:id", (req, res) => {
 
-    var matchedNode = {politico: {}, partido: {}, organizacoes: [], contratos: {assinados: [], propostos: []}, concursos: {organizados: [], participados: []}, eventos: {organizados: [], participados: []}};
+    var session = driver.session();
+
+    var matchedNode = {politico: {}, partido: {}, organizacoes: [], registos: {acerca: []}, contratos: {assinados: [], propostos: []}, concursos: {organizados: [], participados: [], vencidos: []}, eventos: {organizados: [], participados: []}};
 
     var pesquisa = async () => {
         await session.run(`MATCH (p:Politico) WHERE p.id = ${req.params.id} RETURN p`)
@@ -3672,8 +3859,19 @@ app.get("/api/politicos/:id", (req, res) => {
                     await session.run(`MATCH (p:Politico)-[:PERTENCE_A]->(o:Organizacao) WHERE p.id = ${req.params.id} AND o.tipo = 'Partido' RETURN o`)
                         .then((result) => {
                             if(result.records.length > 0){
-                                matchedNode.partido = {id: result.records[0]._fields[0].properties.id.low};
+                                matchedNode.partido = {id: result.records[0]._fields[0].properties.id.low, nome: result.records[0]._fields[0].properties.nome};
                             }
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })
+
+                    await session.run(`MATCH (p:Politico)<-[:ACERCA_DE]-(r:Registo) WHERE p.id = ${req.params.id} RETURN r`)
+                        .then((result) => {
+                            result.records.forEach((record) => {
+                                matchedNode.registos.acerca.push({id: record._fields[0].properties.id.low, titulo: record._fields[0].properties.titulo});
+                            });
                         })
                         .catch((error) => {
                             console.log(error);
@@ -3683,7 +3881,7 @@ app.get("/api/politicos/:id", (req, res) => {
                     await session.run(`MATCH (p:Politico)-[:PERTENCE_A]->(o:Organizacao) WHERE p.id = ${req.params.id} RETURN o`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.organizacoes.push({id: record._fields[0].properties.id.low });
+                                matchedNode.organizacoes.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
                             });
                         })
                         .catch((error) => {
@@ -3694,7 +3892,7 @@ app.get("/api/politicos/:id", (req, res) => {
                     await session.run(`MATCH (p:Politico)-[:ORGANIZA]->(c:Concurso) WHERE p.id = ${req.params.id} RETURN c`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.concursos.organizados.push({id: record._fields[0].properties.id.low });
+                                matchedNode.concursos.organizados.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
                             });
                         })
                         .catch((error) => {
@@ -3705,7 +3903,18 @@ app.get("/api/politicos/:id", (req, res) => {
                     await session.run(`MATCH (p:Politico)-[:PARTICIPA_EM]->(c:Concurso) WHERE p.id = ${req.params.id} RETURN c`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.concursos.participados.push({id: record._fields[0].properties.id.low });
+                                matchedNode.concursos.participados.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
+                            });
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })
+
+                    await session.run(`MATCH (p:Politico)-[:VENCE]->(c:Concurso) WHERE p.id = ${req.params.id} RETURN c`)
+                        .then((result) => {
+                            result.records.forEach((record) => {
+                                matchedNode.concursos.vencidos.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
                             });
                         })
                         .catch((error) => {
@@ -3716,7 +3925,7 @@ app.get("/api/politicos/:id", (req, res) => {
                     await session.run(`MATCH (p:Politico)-[:PROPOE]->(c:Contrato) WHERE p.id = ${req.params.id} RETURN c`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.contratos.propostos.push({id: record._fields[0].properties.id.low });
+                                matchedNode.contratos.propostos.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
                             });
                         })
                         .catch((error) => {
@@ -3727,7 +3936,7 @@ app.get("/api/politicos/:id", (req, res) => {
                     await session.run(`MATCH (p:Politico)-[:ASSINA]->(c:Contrato) WHERE p.id = ${req.params.id} RETURN c`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.contratos.assinados.push({id: record._fields[0].properties.id.low });
+                                matchedNode.contratos.assinados.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
                             });
                         })
                         .catch((error) => {
@@ -3738,7 +3947,7 @@ app.get("/api/politicos/:id", (req, res) => {
                     await session.run(`MATCH (p:Politico)-[:ORGANIZA]->(e:Evento) WHERE p.id = ${req.params.id} RETURN e`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.eventos.organizados.push({id: record._fields[0].properties.id.low });
+                                matchedNode.eventos.organizados.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
                             });
                         })
                         .catch((error) => {
@@ -3749,7 +3958,7 @@ app.get("/api/politicos/:id", (req, res) => {
                     await session.run(`MATCH (p:Politico)-[:PARTICIPA_EM]->(e:Evento) WHERE p.id = ${req.params.id} RETURN e`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.eventos.participados.push({id: record._fields[0].properties.id.low });
+                                matchedNode.eventos.participados.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
                             });
                         })
                         .catch((error) => {
@@ -3792,6 +4001,8 @@ app.get("/api/politicos/:id", (req, res) => {
  */ 
 app.get("/api/empresarios", (req, res) => {
 
+    var session = driver.session();
+
     var matchedNodes = [];
 
     var statement = "MATCH (e:Empresario)";
@@ -3809,11 +4020,11 @@ app.get("/api/empresarios", (req, res) => {
     }
 
     statement = statement + " RETURN e";
-    
+
     session.run(statement)
         .then((result) => {
             result.records.forEach((record) => {
-                matchedNodes.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome, username: record._fields[0].properties.username, nCC: record._fields[0].properties.nCC.low});
+                matchedNodes.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome, username: record._fields[0].properties.username, nCC: record._fields[0].properties.nCC.low, ativo: record._fields[0].properties.ativo});
             });
             res.status(200).send(matchedNodes);
         })
@@ -3845,7 +4056,9 @@ app.get("/api/empresarios", (req, res) => {
  */ 
 app.get("/api/empresarios/:id", (req, res) => {
 
-    var matchedNode = {empresario: {}, organizacoes: [], contratos: {assinados: [], propostos: []}, concursos: {organizados: [], participados: []}, eventos: {organizados: [], participados: []}};
+    var session = driver.session();
+
+    var matchedNode = {empresario: {}, organizacoes: [], registos: {acerca: []}, contratos: {assinados: [], propostos: []}, concursos: {organizados: [], participados: [], vencidos: []}, eventos: {organizados: [], participados: []}};
 
     var pesquisa = async () => {
         await session.run(`MATCH (e:Empresario) WHERE e.id = ${req.params.id} RETURN e`)
@@ -3857,7 +4070,18 @@ app.get("/api/empresarios/:id", (req, res) => {
                     await session.run(`MATCH (e:Empresario)-[:PERTENCE_A]->(o:Organizacao) WHERE e.id = ${req.params.id} RETURN o`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.organizacoes.push({id: record._fields[0].properties.id.low });
+                                matchedNode.organizacoes.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
+                            });
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })
+
+                    await session.run(`MATCH (e:Empresario)<-[:ACERCA_DE]-(r:Registo) WHERE e.id = ${req.params.id} RETURN r`)
+                        .then((result) => {
+                            result.records.forEach((record) => {
+                                matchedNode.registos.acerca.push({id: record._fields[0].properties.id.low, titulo: record._fields[0].properties.titulo });
                             });
                         })
                         .catch((error) => {
@@ -3868,7 +4092,7 @@ app.get("/api/empresarios/:id", (req, res) => {
                     await session.run(`MATCH (e:Empresario)-[:ORGANIZA]->(c:Concurso) WHERE e.id = ${req.params.id} RETURN c`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.concursos.organizados.push({id: record._fields[0].properties.id.low });
+                                matchedNode.concursos.organizados.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
                             });
                         })
                         .catch((error) => {
@@ -3879,7 +4103,18 @@ app.get("/api/empresarios/:id", (req, res) => {
                     await session.run(`MATCH (e:Empresario)-[:PARTICIPA_EM]->(c:Concurso) WHERE e.id = ${req.params.id} RETURN c`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.concursos.participados.push({id: record._fields[0].properties.id.low });
+                                matchedNode.concursos.participados.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
+                            });
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })
+
+                    await session.run(`MATCH (e:Empresario)-[:VENCE]->(c:Concurso) WHERE e.id = ${req.params.id} RETURN c`)
+                        .then((result) => {
+                            result.records.forEach((record) => {
+                                matchedNode.concursos.vencidos.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
                             });
                         })
                         .catch((error) => {
@@ -3890,7 +4125,7 @@ app.get("/api/empresarios/:id", (req, res) => {
                     await session.run(`MATCH (e:Empresario)-[:PROPOE]->(c:Contrato) WHERE e.id = ${req.params.id} RETURN c`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.contratos.propostos.push({id: record._fields[0].properties.id.low });
+                                matchedNode.contratos.propostos.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
                             });
                         })
                         .catch((error) => {
@@ -3901,7 +4136,7 @@ app.get("/api/empresarios/:id", (req, res) => {
                     await session.run(`MATCH (e:Empresario)-[:ASSINA]->(c:Contrato) WHERE e.id = ${req.params.id} RETURN c`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.contratos.assinados.push({id: record._fields[0].properties.id.low });
+                                matchedNode.contratos.assinados.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
                             });
                         })
                         .catch((error) => {
@@ -3912,7 +4147,7 @@ app.get("/api/empresarios/:id", (req, res) => {
                     await session.run(`MATCH (e:Empresario)-[:ORGANIZA]->(e2:Evento) WHERE e.id = ${req.params.id} RETURN e2`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.eventos.organizados.push({id: record._fields[0].properties.id.low });
+                                matchedNode.eventos.organizados.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
                             });
                         })
                         .catch((error) => {
@@ -3923,7 +4158,7 @@ app.get("/api/empresarios/:id", (req, res) => {
                     await session.run(`MATCH (e:Empresario)-[:PARTICIPA_EM]->(e2:Evento) WHERE e.id = ${req.params.id} RETURN e2`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.eventos.participados.push({id: record._fields[0].properties.id.low });
+                                matchedNode.eventos.participados.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
                             });
                         })
                         .catch((error) => {
@@ -3995,6 +4230,10 @@ app.get("/api/empresarios/:id", (req, res) => {
  *                                  type: integer
  *                                  required: true
  *                                  example: "2020-12-03"
+ *                              nipc:
+ *                                  type: integer
+ *                                  required: true
+ *                                  example: 723847124
  * 
  *          responses:
  *              '200':
@@ -4011,6 +4250,8 @@ app.get("/api/empresarios/:id", (req, res) => {
  *              
  */ 
 app.get("/api/organizacoes", (req, res) => {
+
+    var session = driver.session();
 
     var matchedNodes = [];
 
@@ -4029,11 +4270,11 @@ app.get("/api/organizacoes", (req, res) => {
     }
 
     statement = statement + " RETURN o";
-    
+
     session.run(statement)
         .then((result) => {
             result.records.forEach((record) => {
-                matchedNodes.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome, descricao: record._fields[0].properties.descricao, dataCriacao: record._fields[0].properties.dataCriacao, tipo: record._fields[0].properties.tipo});
+                matchedNodes.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome, descricao: record._fields[0].properties.descricao, dataCriacao: record._fields[0].properties.dataCriacao, tipo: record._fields[0].properties.tipo, nipc: record._fields[0].properties.nipc.low});
             });
             res.status(200).send(matchedNodes);
         })
@@ -4092,6 +4333,9 @@ app.get("/api/organizacoes", (req, res) => {
  *                              dataCriacao:
  *                                  type: integer
  *                                  example: "2020-12-03"
+ *                              nipc:
+ *                                  type: integer
+ *                                  example: 823451246
  * 
  *          responses:
  *              '200':
@@ -4111,7 +4355,9 @@ app.get("/api/organizacoes", (req, res) => {
  */ 
 app.get("/api/organizacoes/:id", (req, res) => {
 
-    var matchedNode = {organizacao: {}, associados: [], contratos: {assinados: [], propostos: []}, concursos: {organizados: [], participados: []}, eventos: {organizados: [], participados: []}};
+    var session = driver.session();
+
+    var matchedNode = {organizacao: {}, associados: [], registos: {acerca: []}, contratos: {assinados: [], propostos: []}, concursos: {organizados: [], participados: [], vencidos: []}, eventos: {organizados: [], participados: []}};
 
     var pesquisa = async () => {
         await session.run(`MATCH (o:Organizacao) WHERE o.id = ${req.params.id} RETURN o`)
@@ -4119,11 +4365,22 @@ app.get("/api/organizacoes/:id", (req, res) => {
                 if(result.records.length == 0){
                     res.status(404).send("Organização não encontrada.");
                 } else {
-                    matchedNode.organizacao = {id: result.records[0]._fields[0].properties.id.low, nome: result.records[0]._fields[0].properties.nome, descricao: result.records[0]._fields[0].properties.descricao, dataCriacao: result.records[0]._fields[0].properties.dataCriacao};
+                    matchedNode.organizacao = {id: result.records[0]._fields[0].properties.id.low, nome: result.records[0]._fields[0].properties.nome, descricao: result.records[0]._fields[0].properties.descricao, dataCriacao: result.records[0]._fields[0].properties.dataCriacao, tipo: result.records[0]._fields[0].properties.tipo, nipc: result.records[0]._fields[0].properties.nipc.low};
                     await session.run(`MATCH (p)-[:PERTENCE_A]->(o:Organizacao) WHERE o.id = ${req.params.id} RETURN p`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.associados.push({id: record._fields[0].properties.id.low, tipo: record._fields[0].labels[0]});
+                                matchedNode.associados.push({id: record._fields[0].properties.id.low, tipo: record._fields[0].labels[0], nome: record._fields[0].properties.nome});
+                            });
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })
+
+                    await session.run(`MATCH (o:Organizacao)<-[:ACERCA_DE]-(r:Registo) WHERE o.id = ${req.params.id} RETURN r`)
+                        .then((result) => {
+                            result.records.forEach((record) => {
+                                matchedNode.registos.acerca.push({id: record._fields[0].properties.id.low, titulo: record._fields[0].properties.titulo });
                             });
                         })
                         .catch((error) => {
@@ -4134,7 +4391,7 @@ app.get("/api/organizacoes/:id", (req, res) => {
                     await session.run(`MATCH (o:Organizacao)-[:ORGANIZA]->(c:Concurso) WHERE o.id = ${req.params.id} RETURN c`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.concursos.organizados.push({id: record._fields[0].properties.id.low });
+                                matchedNode.concursos.organizados.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
                             });
                         })
                         .catch((error) => {
@@ -4145,7 +4402,18 @@ app.get("/api/organizacoes/:id", (req, res) => {
                     await session.run(`MATCH (o:Organizacao)-[:PARTICIPA_EM]->(c:Concurso) WHERE o.id = ${req.params.id} RETURN c`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.concursos.participados.push({id: record._fields[0].properties.id.low });
+                                matchedNode.concursos.participados.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
+                            });
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })
+
+                    await session.run(`MATCH (o:Organizacao)-[:VENCE]->(c:Concurso) WHERE o.id = ${req.params.id} RETURN c`)
+                        .then((result) => {
+                            result.records.forEach((record) => {
+                                matchedNode.concursos.vencidos.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
                             });
                         })
                         .catch((error) => {
@@ -4156,7 +4424,7 @@ app.get("/api/organizacoes/:id", (req, res) => {
                     await session.run(`MATCH (o:Organizacao)-[:PROPOE]->(c:Contrato) WHERE o.id = ${req.params.id} RETURN c`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.contratos.propostos.push({id: record._fields[0].properties.id.low });
+                                matchedNode.contratos.propostos.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
                             });
                         })
                         .catch((error) => {
@@ -4167,7 +4435,7 @@ app.get("/api/organizacoes/:id", (req, res) => {
                     await session.run(`MATCH (o:Organizacao)-[:ASSINA]->(c:Contrato) WHERE o.id = ${req.params.id} RETURN c`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.contratos.assinados.push({id: record._fields[0].properties.id.low });
+                                matchedNode.contratos.assinados.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
                             });
                         })
                         .catch((error) => {
@@ -4178,7 +4446,7 @@ app.get("/api/organizacoes/:id", (req, res) => {
                     await session.run(`MATCH (o:Organizacao)-[:ORGANIZA]->(e:Evento) WHERE o.id = ${req.params.id} RETURN e`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.eventos.organizados.push({id: record._fields[0].properties.id.low });
+                                matchedNode.eventos.organizados.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
                             });
                         })
                         .catch((error) => {
@@ -4189,7 +4457,7 @@ app.get("/api/organizacoes/:id", (req, res) => {
                     await session.run(`MATCH (o:Organizacao)-[:PARTICIPA_EM]->(e:Evento) WHERE o.id = ${req.params.id} RETURN e`)
                         .then((result) => {
                             result.records.forEach((record) => {
-                                matchedNode.eventos.participados.push({id: record._fields[0].properties.id.low });
+                                matchedNode.eventos.participados.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
                             });
                         })
                         .catch((error) => {
@@ -4206,12 +4474,14 @@ app.get("/api/organizacoes/:id", (req, res) => {
 
     pesquisa().then(() => {
         if(!res.writableEnded){
-            res.send(200).send(matchedNode);
+            res.status(200).send(matchedNode);
         }
     })
 });
 
 app.post("/api/organizacoes", (req, res) => {
+
+    var session = driver.session();
 
     const result = validateOrganizacao(req.body);
     if(result.error) return res.status(400).send(result.error);
@@ -4224,23 +4494,24 @@ app.post("/api/organizacoes", (req, res) => {
 
     var pesquisa = async () => {
 
-        await session.run(`MATCH (o:Organizacao) WHERE o.nome = '${req.body.nome}' RETURN o`)
+        await session.run(`MATCH (o:Organizacao) WHERE o.nome = '${req.body.nome}' OR o.nipc = ${req.body.nipc} RETURN o`)
             .then(async (result) => {
                 if(result.records.length > 0){
-                    res.status(400).send("Já existe uma organização com o nome introduzido.");
+                    res.status(400).send("Já existe uma organização com o nome ou nipc introduzido.");
                 } else {
                     const idGrande = uuidGen.uuid();
                     const id = idGrande % 10000000;
 
                     trans = session.beginTransaction();
 
-                    await trans.run(`CREATE (o:Organizacao {id: ${id}, nome: '${req.body.nome}', tipo: '${req.body.tipo}', descricao: '${req.body.descricao}', dataCriacao: date('${req.body.dataCriacao}')})`)
+                    await trans.run(`CREATE (o:Organizacao {id: ${id}, nome: '${req.body.nome}', tipo: '${req.body.tipo}', descricao: '${req.body.descricao}', dataCriacao: date('${req.body.dataCriacao}'), nipc: ${req.body.nipc}})`)
                         .then((result) => {
                             insertedNode.id = id;
                             insertedNode.nome = `${req.body.nome}`;
                             insertedNode.type = `${req.body.tipo}`;
                             insertedNode.descricao = `${req.body.descricao}`;
                             insertedNode.dataCriacao = `${req.body.dataCriacao}`;
+                            insertedNode.nipc = req.body.nipc;
                         })
                         .catch((error) => {
                             console.log(error);
@@ -4272,6 +4543,8 @@ app.post("/api/organizacoes", (req, res) => {
 });
 
 app.put("/api/organizacoes/:id", (req, res) => {
+
+    var session = driver.session();
 
     const result = validateAlterarOrganizacao(req.body);
     if(result.error) return res.status(400).send(result.error);
@@ -4308,13 +4581,36 @@ app.put("/api/organizacoes/:id", (req, res) => {
     }
     if(req.body.dataCriacao){
         if(statement.includes("SET")){
-            statement = statement + `, o.dataCriacao = '${req.body.dataCriacao}' `;
+            statement = statement + `, o.dataCriacao = date('${req.body.dataCriacao}') `;
         } else {
-            statement = statement + `SET o.dataCriacao = '${req.body.dataCriacao}' `;
+            statement = statement + `SET o.dataCriacao = date('${req.body.dataCriacao}') `;
+        }
+    }
+    if(req.body.nipc){
+        if(statement.includes("SET")){
+            statement = statement + `, o.nipc = ${req.body.nipc} `;
+        } else {
+            statement = statement + `SET o.nipc = ${req.body.nipc} `;
         }
     }
 
     statement = statement + "RETURN o";
+
+    if(req.body.username || req.body.nipc){
+        var statement2;
+        var errorMessage;
+
+        if(req.body.username && !req.body.nipc){
+            statement2 = `MATCH (n) WHERE n.username = '${req.body.username}' RETURN n`;
+            errorMessage = "Já existe um utilizador com esse username.";
+        } else if(!req.body.username && req.body.nipc){
+            statement2 = `MATCH (n) WHERE n.nCC = ${req.body.nipc} RETURN n`;
+            errorMessage = "Já existe um utilizador com esse nipc.";
+        } else if(req.body.username && req.body.nipc){
+            statement2 = `MATCH (n) WHERE n.username = '${req.body.username}' OR n.nCC = ${req.body.nipc} RETURN n`;
+            errorMessage = "Já existe um utilizador com esse username ou nipc.";
+        }
+    }
 
     var trans;
 
@@ -4328,11 +4624,11 @@ app.put("/api/organizacoes/:id", (req, res) => {
                     res.status(404).send("Organização não encontrada.");
                     trans.rollback();
                 } else {
-                    if(req.body.nome){
-                        await trans.run(`MATCH (o:Organizacao) WHERE o.nome = '${req.body.nome}' RETURN o`)
+                    if(req.body.nome || req.body.nipc){
+                        await trans.run(statement2)
                             .then(async (result) => {
                                 if(result.records.length > 0){
-                                    res.status(401).send("Já existe uma organização com esse nome.");
+                                    res.status(401).send(errorMessage);
                                     trans.rollback();
                                 } else {
                                     await trans.run(statement)
@@ -4427,6 +4723,8 @@ app.put("/api/organizacoes/:id", (req, res) => {
  */ 
 app.post("/api/organizacoes/:id/associar", (req, res) => {
 
+    var session = driver.session();
+
     var changedNode = {};
 
     var trans;
@@ -4443,7 +4741,7 @@ app.post("/api/organizacoes/:id/associar", (req, res) => {
                     res.status(404).send("Organização não encontrada.");
                     trans.rollback();
                 } else {
-                    await trans.run(`MATCH (u:${user.tipo})-[p:PERTENCE_A]->(o:Organizacao) WHERE o.id = ${req.params.id} AND u.id = ${user.id} AND p.dataFim IS NULL SET p.dataFim = date() RETURN p`)
+                    await trans.run(`MATCH (u:${user.tipo})-[p:PERTENCE_A]->(o:Organizacao) WHERE o.id = ${req.params.id} AND u.id = ${user.id} WITH p.dataInicio as data, p DELETE p RETURN data`)
                         .then(async (result) => {
                             if(result.records.length == 0){
                                 await trans.run(`MATCH (u:${user.tipo}) WHERE u.id = ${user.id} MATCH (o:Organizacao) WHERE o.id = ${req.params.id} CREATE (u)-[:PERTENCE_A {dataInicio: date()}]->(o)`)
@@ -4498,12 +4796,14 @@ app.post("/api/organizacoes/:id/associar", (req, res) => {
  * 
  * /api/cidadaosRegistados:
  *      get:
- *          description: Obtém informação de todos os cidadãos regitados. Possível quando logged in como administrador.
+ *          description: Obtém informação de todos os cidadãos regitados. Possível quando logged in como administrador, empresario, político ou cidadão creditado.
  *          security:
  *              - bearerAuth: []
  *          parameters:
  *              - in: header
  *                name: refreshToken
+ *              - in: query
+ *                name: search
  * 
  *          responses:
  *              '200':
@@ -4519,17 +4819,27 @@ app.post("/api/organizacoes/:id/associar", (req, res) => {
  *                  description: Este utilizador não tem permissões para aceder às informações de todos os cidadãos registados ou o token de acesso é inválido.        
  */ 
 app.get("/api/cidadaosRegistados", (req, res) => {
+    
+    var session = driver.session();
 
     user = validateToken(req, res);
 
-    var matchedNodes = {cidadaos: []};
+    var matchedNodes = [];
+
+    var statement = "MATCH (c:CidadaoRegistado)";
+
+    if(req.query.search){
+        statement = statement + ` WHERE c.nome =~ '(?i).*${req.query.search}.*'`;
+    }
+
+    statement = statement + " RETURN c";
 
     var pesquisa = async () => {
 
-        await session.run("MATCH (c:CidadaoRegistado) RETURN c")
+        await session.run(statement)
             .then((result) => {
                 result.records.forEach((record) => {
-                    matchedNodes.cidadaos.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome, username: record._fields[0].properties.username, nCC: record._fields[0].properties.nCC.low});
+                    matchedNodes.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome, username: record._fields[0].properties.username, nCC: record._fields[0].properties.nCC.low, ativo: record._fields[0].properties.ativo});
                 });
                 res.send(matchedNodes);
             })
@@ -4539,7 +4849,7 @@ app.get("/api/cidadaosRegistados", (req, res) => {
             });
     }
 
-    if(user && user.tipo == 'Administrador'){
+    if(user && user.tipo != 'CidadaoRegistado'){
         refreshToken({id:user.id, username: user.username, tipo: user.tipo}, req.headers.refreshtoken, session, matchedNodes).then(() => {
             pesquisa().then(() => {
                 if(!res.writableEnded){
@@ -4558,14 +4868,115 @@ app.get("/api/cidadaosRegistados", (req, res) => {
 /**
  * @swagger
  * 
+ * /api/CidadaosRegistados/{id}:
+ *      get:
+ *          description: Obtém informação de um cidadão registado.
+ *          parameters:
+ *              - in: path
+ *                name: id
+ * 
+ *          responses:
+ *              '200':
+ *                  description: Cidadão registado obtido com sucesso. Devolve informação do cidadão registado.
+ *                              
+ *              '400':
+ *                  description: Erro com o pedido.
+ * 
+ *              '404':
+ *                  description: Cidadão registado não encontrado.
+ */ 
+app.get("/api/CidadaosRegistados/:id", (req, res) => {
+
+    var session = driver.session();
+
+    var matchedNode = {cidadaoRegistado: {}, registos: {acerca: []}, contratos: {assinados: []}, concursos: {participados: [], vencidos: []}, eventos: {participados: []}};
+
+    var pesquisa = async () => {
+        await session.run(`MATCH (c:CidadaoRegistado) WHERE c.id = ${req.params.id} RETURN c`)
+            .then(async (result) => {
+                if(result.records.length == 0){
+                    res.status(404).send("Cidadão registado não encontrado.");
+                } else {
+                    matchedNode.cidadaoRegistado = {id: result.records[0]._fields[0].properties.id.low, nome: result.records[0]._fields[0].properties.nome, username: result.records[0]._fields[0].properties.username, nCC: result.records[0]._fields[0].properties.nCC.low};
+                    
+                    await session.run(`MATCH (c:CidadaoRegistado)<-[:ACERCA_DE]-(r:Registo) WHERE c.id = ${req.params.id} RETURN r`)
+                        .then((result) => {
+                            result.records.forEach((record) => {
+                                matchedNode.registos.acerca.push({id: record._fields[0].properties.id.low, titulo: record._fields[0].properties.titulo });
+                            });
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })
+
+                    await session.run(`MATCH (c1:CidadaoRegistado)-[:PARTICIPA_EM]->(c2:Concurso) WHERE c1.id = ${req.params.id} RETURN c2`)
+                        .then((result) => {
+                            result.records.forEach((record) => {
+                                matchedNode.concursos.participados.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
+                            });
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })
+
+                    await session.run(`MATCH (c1:CidadaoRegistado)-[:VENCE]->(c2:Concurso) WHERE c1.id = ${req.params.id} RETURN c2`)
+                        .then((result) => {
+                            result.records.forEach((record) => {
+                                matchedNode.concursos.vencidos.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
+                            });
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })
+
+                    await session.run(`MATCH (c1:CidadaoRegistado)-[:ASSINA]->(c2:Contrato) WHERE c1.id = ${req.params.id} RETURN c2`)
+                        .then((result) => {
+                            result.records.forEach((record) => {
+                                matchedNode.contratos.assinados.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
+                            });
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })
+                    
+                    await session.run(`MATCH (c:CidadaoRegistado)-[:PARTICIPA_EM]->(e:Evento) WHERE c.id = ${req.params.id} RETURN e`)
+                        .then((result) => {
+                            result.records.forEach((record) => {
+                                matchedNode.eventos.participados.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
+                            });
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })        
+                }
+            })
+            .catch((error) => {
+                console.log(error);
+                res.status(400).send("Algo correu mal com a query.");
+            })
+    }
+
+    pesquisa().then(() => {
+        if(!res.writableEnded){
+            res.status(200).send(matchedNode);
+        }
+    })
+});
+
+/**
+ * @swagger
+ * 
  * /api/cidadaosCreditados:
  *      get:
- *          description: Obtém informação de todos os cidadãos creditados. Possível quando logged in como administrador.
- *          security:
- *              - bearerAuth: []
+ *          description: Obtém informação de todos os cidadãos creditados.
  *          parameters:
- *              - in: header
- *                name: refreshToken
+ *              - in: query
+ *                name: search
  * 
  *          responses:
  *              '200':
@@ -4574,36 +4985,214 @@ app.get("/api/cidadaosRegistados", (req, res) => {
  *              '400':
  *                  description: Erro com o pedido. 
  * 
- *              '401':
- *                  description: Access token em falta.
- *          
- *              '403':
- *                  description: Este utilizador não tem permissões para aceder às informações de todos os cidadãos creditados ou o token de acesso é inválido.        
  */ 
 app.get("/api/cidadaosCreditados", (req, res) => {
 
-    user = validateToken(req, res);
+    var session = driver.session();
 
-    var matchedNodes = {cidadaos: []};
+    var matchedNodes = [];
+
+    var statement = "MATCH (c:CidadaoCreditado)";
+
+    if(req.query.search){
+        statement = statement + ` WHERE c.nome =~ '(?i).*${req.query.search}.*'`;
+    }
+
+    statement = statement + " RETURN c";
+
+    session.run(statement)
+        .then((result) => {
+            result.records.forEach((record) => {
+                matchedNodes.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome, username: record._fields[0].properties.username, nCC: record._fields[0].properties.nCC.low, ativo: record._fields[0].properties.ativo});
+            });
+            res.status(200).send(matchedNodes);
+        })
+        .catch((error) => {
+            console.log(error);
+            res.status(400).send("Algo correu mal com a query.");
+        });
+});
+
+/**
+ * @swagger
+ * 
+ * /api/CidadaosCreditados/{id}:
+ *      get:
+ *          description: Obtém informação de um cidadão creditado.
+ *          parameters:
+ *              - in: path
+ *                name: id
+ * 
+ *          responses:
+ *              '200':
+ *                  description: Cidadão creditado obtido com sucesso. Devolve informação do cidadão creditado.
+ *                              
+ *              '400':
+ *                  description: Erro com o pedido.
+ * 
+ *              '404':
+ *                  description: Cidadão creditado não encontrado.
+ */ 
+app.get("/api/CidadaosCreditados/:id", (req, res) => {
+
+    var session = driver.session();
+
+    var matchedNode = {cidadaoCreditado: {}, registos: {criados: [], acerca: []}, organizacoes: [], contratos: {assinados: []}, concursos: {participados: [], vencidos: []}, eventos: {participados: []}};
 
     var pesquisa = async () => {
+        await session.run(`MATCH (c:CidadaoCreditado) WHERE c.id = ${req.params.id} RETURN c`)
+            .then(async (result) => {
+                if(result.records.length == 0){
+                    res.status(404).send("Cidadão creditado não encontrado.");
+                } else {
+                    matchedNode.cidadaoCreditado = {id: result.records[0]._fields[0].properties.id.low, nome: result.records[0]._fields[0].properties.nome, username: result.records[0]._fields[0].properties.username, nCC: result.records[0]._fields[0].properties.nCC.low};
+                    
+                    await session.run(`MATCH (c:CidadaoCreditado)-[:CRIA]->(r:Registo) WHERE c.id = ${req.params.id} RETURN r`)
+                        .then((result) => {
+                            result.records.forEach((record) => {
+                                matchedNode.registos.criados.push({id: record._fields[0].properties.id.low, titulo: record._fields[0].properties.titulo });
+                            });
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })
 
-        await session.run("MATCH (c:CidadaoCreditado) RETURN c")
-            .then((result) => {
-                result.records.forEach((record) => {
-                    matchedNodes.cidadaos.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome, username: record._fields[0].properties.username, nCC: record._fields[0].properties.nCC.low});
-                });
-                res.send(matchedNodes);
+                    await session.run(`MATCH (c:CidadaoCreditado)<-[:ACERCA_DE]-(r:Registo) WHERE c.id = ${req.params.id} RETURN r`)
+                        .then((result) => {
+                            result.records.forEach((record) => {
+                                matchedNode.registos.acerca.push({id: record._fields[0].properties.id.low, titulo: record._fields[0].properties.titulo });
+                            });
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })
+
+                    await session.run(`MATCH (c:CidadaoCreditado)-[:PERTENCE_A]->(o:Organizacao) WHERE c.id = ${req.params.id} RETURN o`)
+                        .then((result) => {
+                            result.records.forEach((record) => {
+                                matchedNode.organizacoes.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
+                            });
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })
+
+                    await session.run(`MATCH (c1:CidadaoCreditado)-[:PARTICIPA_EM]->(c2:Concurso) WHERE c1.id = ${req.params.id} RETURN c2`)
+                        .then((result) => {
+                            result.records.forEach((record) => {
+                                matchedNode.concursos.participados.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
+                            });
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })
+
+                    await session.run(`MATCH (c1:CidadaoCreditado)-[:VENCE]->(c2:Concurso) WHERE c1.id = ${req.params.id} RETURN c2`)
+                        .then((result) => {
+                            result.records.forEach((record) => {
+                                matchedNode.concursos.vencidos.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
+                            });
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })
+
+                    await session.run(`MATCH (c1:CidadaoCreditado)-[:ASSINA]->(c2:Contrato) WHERE c1.id = ${req.params.id} RETURN c2`)
+                        .then((result) => {
+                            result.records.forEach((record) => {
+                                matchedNode.contratos.assinados.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
+                            });
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })
+                    
+                    await session.run(`MATCH (c:CidadaoCreditado)-[:PARTICIPA_EM]->(e:Evento) WHERE c.id = ${req.params.id} RETURN e`)
+                        .then((result) => {
+                            result.records.forEach((record) => {
+                                matchedNode.eventos.participados.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome });
+                            });
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            res.status(400).send("Algo correu mal com a query.");
+                        })        
+                }
             })
             .catch((error) => {
                 console.log(error);
                 res.status(400).send("Algo correu mal com a query.");
-            });
+            })
     }
 
-    if(user && user.tipo == 'Administrador'){
-        refreshToken({id:user.id, username: user.username, tipo: user.tipo}, req.headers.refreshtoken, session, matchedNodes).then(() => {
-            pesquisa().then(() => {
+    pesquisa().then(() => {
+        if(!res.writableEnded){
+            res.status(200).send(matchedNode);
+        }
+    })
+});
+
+/**
+ * @swagger
+ * 
+ * /api/administradores:
+ *      get:
+ *          description: Obtém informação de todos os administradores. Possível quando logged in como administrador.
+ *          security:
+ *              - bearerAuth: []
+ *          parameters:
+ *              - in: header
+ *                name: refreshToken
+ *              - in: query
+ *                name: search
+ * 
+ *          responses:
+ *              '200':
+ *                  description: Administradores obtidos com sucesso. Devolve informação de todos esses administradores.
+ *                              
+ *              '400':
+ *                  description: Erro com o pedido. 
+ * 
+ */ 
+app.get("/api/administradores", (req, res) => {
+
+    var session = driver.session();
+
+    var matchedNodes = [];
+
+    var statement = "MATCH (a:Administrador)";
+
+    if(req.query.search){
+        statement = statement + ` WHERE a.nome =~ '(?i).*${req.query.search}.*'`;
+    }
+
+    statement = statement + " RETURN a";
+
+    user = validateToken(req, res);
+
+    var pesquisa = async () => {
+        await session.run(statement)
+            .then((result) => {
+                result.records.forEach((record) => {
+                    matchedNodes.push({id: record._fields[0].properties.id.low, nome: record._fields[0].properties.nome, username: record._fields[0].properties.username, nCC: record._fields[0].properties.nCC.low, ativo: record._fields[0].properties.ativo});
+                });
+                res.status(200).send(matchedNodes);
+            })
+            .catch((error) => {
+                console.log(error);
+                res.status(400).send("Algo correu mal com a query.");
+            });    
+    }
+
+    if(user && user.tipo == "Administrador"){
+        refreshToken({id: user.id, username: user.username, tipo: user.tipo}, req.headers.refreshtoken, session, matchedNodes).then(() => {
+            pesquisa(user).then(() => {
                 if(!res.writableEnded){
                     trans.commit();
                     res.status(201).send(matchedNodes);
@@ -4620,7 +5209,7 @@ app.get("/api/cidadaosCreditados", (req, res) => {
 /**
  * @swagger
  * 
- * /api/comentarios:
+ * /api/registos/{id}/comentarios:
  *      post:
  *          description: Cria um novo comentário num registo. Possível quando logged in.
  *          security:
@@ -4628,6 +5217,9 @@ app.get("/api/cidadaosCreditados", (req, res) => {
  *          parameters:
  *              - in: header
  *                name: refreshToken
+ *              - in: path
+ *                name: id
+ * 
  *          requestBody:
  *              required: true
  *              content:
@@ -4639,10 +5231,6 @@ app.get("/api/cidadaosCreditados", (req, res) => {
  *                                  type: string
  *                                  required: true
  *                                  example: "comentario teste"
- *                              registo:
- *                                  type: integer
- *                                  required: true
- *                                  example: 1
  *          responses:
  *              '201':
  *                  description: Um novo comentário foi criado com sucesso. Devolve a informação do novo comentário.
@@ -4657,7 +5245,9 @@ app.get("/api/cidadaosCreditados", (req, res) => {
  *                  description: O token de acesso está fora de validade.
  *                      
  */
-app.post("/api/comentarios", (req, res) => {
+app.post("/api/registos/:id/comentarios", (req, res) => {
+
+    var session = driver.session();
 
     const result = validateComentario(req.body);
     if(result.error) return res.status(400).send(result.error);
@@ -4674,12 +5264,12 @@ app.post("/api/comentarios", (req, res) => {
 
         trans = session.beginTransaction();
         
-        await trans.run(`MATCH (u:${user.tipo}) WHERE u.id = ${user.id} MATCH (r:Registo) WHERE r.id = ${req.body.registo} CREATE (u)-[:COMENTA]->(c:Comentario {id: ${id}, descricao: '${req.body.descricao}', data: date()})-[:ESTA_EM]->(r) RETURN c`)
+        await trans.run(`MATCH (u:${user.tipo}) WHERE u.id = ${user.id} MATCH (r:Registo) WHERE r.id = ${req.params.id} CREATE (u)-[:COMENTA]->(c:Comentario {id: ${id}, descricao: '${req.body.descricao}', data: date()})-[:ESTA_EM]->(r) RETURN c`)
             .then((result) => {
                 insertedNode.id = id;
                 insertedNode.descricao = `${req.body.descricao}`;
                 insertedNode.data = `${result.records[0]._fields[0].properties.data}`;
-                insertedNode.registo = req.body.registo;
+                insertedNode.registo = req.params.id;
                 insertedNode.tipoUser = user.tipo;
                 insertedNode.user = user.id;
             })
@@ -4709,7 +5299,7 @@ app.post("/api/comentarios", (req, res) => {
 /**
  * @swagger
  * 
- * /api/comentarios/{id}:
+ * /api/registos/{idReg}/comentarios/{id}:
  *      delete:
  *          description: Apaga um comentário de um registo. Possível quando logged in como administrador.
  *          security:
@@ -4717,6 +5307,8 @@ app.post("/api/comentarios", (req, res) => {
  *          parameters:
  *              - in: header
  *                name: refreshToken
+ *              - in: path
+ *                name: idReg
  *              - in: path
  *                name: id
  * 
@@ -4736,7 +5328,9 @@ app.post("/api/comentarios", (req, res) => {
  *              '404':
  *                  description: Comentário não encontrado.  
  */
-app.delete("/api/comentarios/:id", (req, res) => {
+app.delete("/api/registos/:idReg/comentarios/:id", (req, res) => {
+
+    var session = driver.session();
 
     var trans;
 
@@ -4824,6 +5418,8 @@ app.delete("/api/comentarios/:id", (req, res) => {
  *                      
  */
 app.post("/api/registos/:id/votar", (req, res) => {
+
+    var session = driver.session();
 
     const result = validateVoto(req.body);
     if(result.error) return res.status(400).send(result.error);
@@ -4942,6 +5538,7 @@ function validateRegisterPolitico(register){
 
     const schema = Joi.object({
         circuloEleitoral: Joi.string().min(3).max(50).required(),
+        partido: Joi.number().min(1).max(999999999).required(),
         habilitacoes: Joi.string().valid('Nenhuma', '4º ano', '6º ano', '9º ano', '12º ano', 'Licenciatura', 'Mestrado', 'Doutoramento').required(),
         username: Joi.string().min(3).max(20).required(),
         password: Joi.string().min(5).max(50).required(),
@@ -4964,14 +5561,29 @@ function validateAlterarUser(user){
     return schema.validate(user)
 }
 
+function validateAlterarPolitico(user){
+
+    const schema = Joi.object({
+        circuloEleitoral: Joi.string().min(3).max(50),
+        username: Joi.string().min(3).max(20),
+        password: Joi.string().min(5).max(50),
+        nome: Joi.string().min(5).max(50),
+        nCC: Joi.number().min(1).max(99999999),
+        partido: Joi.number().min(1).max(999999999),
+        habilitacoes: Joi.string().valid('Nenhuma', '4º ano', '6º ano', '9º ano', '12º ano', 'Licenciatura', 'Mestrado', 'Doutoramento')
+    })
+
+    return schema.validate(user)
+}
+
 function validateRegisto(registo){
 
     const schema = Joi.object({
         titulo: Joi.string().min(5).max(50).required(),
         descricao: Joi.string().min(1).max(1000).required(),
-        assuntos: Joi.array().items(Joi.object({
+        assuntos: Joi.array().min(1).items(Joi.object({
             id: Joi.number().required(), 
-            tipo: Joi.string().valid('Organizacao', 'Evento', 'Contrato', 'Concurso', 'Politico', 'Empresario', 'CidadaoCreditado').required()
+            tipo: Joi.string().valid('Organizacao', 'Evento', 'Contrato', 'Concurso', 'Politico', 'Empresario', 'CidadaoCreditado', 'CidadaoRegistado').required()
         })).required()
     })
 
@@ -4984,9 +5596,9 @@ function validateEvento(evento){
         organizacao: Joi.number().min(1),
         nome: Joi.string().min(5).max(50).required(),
         descricao: Joi.string().min(1).max(1000).required(),
-        exclusividade: Joi.string().valid('publico', 'privado').required(),
+        exclusividade: Joi.string().valid('Publico', 'Privado').required(),
         dataInicio: Joi.date().required(),
-        dataFim: Joi.date().greater(Joi.ref('dataInicio')).required(),
+        dataFim: Joi.date().min(Joi.ref('dataInicio')).required(),
         convidados: Joi.array().items(Joi.object({
             id: Joi.number().required(), 
             tipo: Joi.string().valid('Organizacao', 'CidadaoRegistado', 'Politico', 'Empresario', 'CidadaoCreditado').required()
@@ -5002,9 +5614,9 @@ function validateAlterarEvento(evento){
         organizacao: Joi.number().min(1),
         nome: Joi.string().min(5).max(50),
         descricao: Joi.string().min(1).max(1000),
-        exclusividade: Joi.string().valid('publico', 'privado'),
+        exclusividade: Joi.string().valid('Publico', 'Privado'),
         dataInicio: Joi.date(),
-        dataFim: Joi.date().greater(Joi.ref('dataInicio')),
+        dataFim: Joi.date().min(Joi.ref('dataInicio')),
         convidados: Joi.array().items(Joi.object({
             id: Joi.number().required(), 
             tipo: Joi.string().valid('Organizacao', 'CidadaoRegistado', 'Politico', 'Empresario', 'CidadaoCreditado').required()
@@ -5029,16 +5641,16 @@ function validateConcurso(concurso){
         organizacao: Joi.number().min(1),
         nome: Joi.string().min(5).max(50).required(),
         descricao: Joi.string().min(1).max(1000).required(),
-        tipo: Joi.string().valid('construcao', 'outro').required(),
+        tipo: Joi.string().valid('Construcao', 'Outro').required(),
         dataInicio: Joi.date().required(),
-        dataFim: Joi.date().greater(Joi.ref('dataInicio')).required(),
-        participantes: Joi.array().items(Joi.object({
+        dataFim: Joi.date().min(Joi.ref('dataInicio')).required(),
+        participantes: Joi.array().min(1).items(Joi.object({
             id: Joi.number().required(), 
-            tipo: Joi.string().valid('Organizacao', 'Politico', 'Empresario').required()
+            tipo: Joi.string().valid('Organizacao', 'Politico', 'Empresario', 'CidadaoRegistado').required()
         })),
-        vencedores: Joi.array().items(Joi.object({
+        vencedores: Joi.array().min(1).items(Joi.object({
             id: Joi.number().required(), 
-            tipo: Joi.string().valid('Organizacao', 'Politico', 'Empresario').required()
+            tipo: Joi.string().valid('Organizacao', 'Politico', 'Empresario', 'CidadaoRegistado').required()
         }))
     })
 
@@ -5051,16 +5663,16 @@ function validateAlterarConcurso(concurso){
         organizacao: Joi.number().min(1),
         nome: Joi.string().min(5).max(50),
         descricao: Joi.string().min(1).max(1000),
-        tipo: Joi.string().valid('construcao', 'outro'),
+        tipo: Joi.string().valid('Construcao', 'Outro'),
         dataInicio: Joi.date(),
-        dataFim: Joi.date().greater(Joi.ref('dataInicio')),
-        participantes: Joi.array().items(Joi.object({
+        dataFim: Joi.date().min(Joi.ref('dataInicio')),
+        participantes: Joi.array().min(1).items(Joi.object({
             id: Joi.number().required(), 
-            tipo: Joi.string().valid('Organizacao', 'Politico', 'Empresario').required()
+            tipo: Joi.string().valid('Organizacao', 'Politico', 'Empresario', 'CidadaoRegistado').required()
         })),
-        vencedores: Joi.array().items(Joi.object({
+        vencedores: Joi.array().min(1).items(Joi.object({
             id: Joi.number().required(), 
-            tipo: Joi.string().valid('Organizacao', 'Politico', 'Empresario').required()
+            tipo: Joi.string().valid('Organizacao', 'Politico', 'Empresario', 'CidadaoRegistado').required()
         }))
     })
 
@@ -5083,16 +5695,16 @@ function validateContrato(contrato){
         nome: Joi.string().min(5).max(50).required(),
         descricao: Joi.string().min(1).max(1000).required(),
         conclusao: Joi.string().min(1).max(1000).required(),
-        tipo: Joi.string().valid('construcao', 'outro').required(),
+        tipo: Joi.string().valid('Construcao', 'Outro').required(),
         dataInicio: Joi.date().required(),
-        dataFim: Joi.date().greater(Joi.ref('dataInicio')).required(),
-        assinaturas: Joi.array().items(Joi.object({
+        dataFim: Joi.date().min(Joi.ref('dataInicio')).required(),
+        assinaturas: Joi.array().min(2).items(Joi.object({
             id: Joi.number().required(), 
-            tipo: Joi.string().valid('Organizacao', 'Politico', 'Empresario').required()
+            tipo: Joi.string().valid('Organizacao', 'Politico', 'Empresario', 'CidadaoRegistado').required()
         })),
-        proposicoes: Joi.array().items(Joi.object({
+        proposicoes: Joi.array().min(1).items(Joi.object({
             id: Joi.number().required(), 
-            tipo: Joi.string().valid('Organizacao', 'Politico', 'Empresario').required()
+            tipo: Joi.string().valid('Organizacao', 'Politico', 'Empresario', 'CidadaoRegistado').required()
         })).required(),
         concursos: Joi.array().items(Joi.object({
             id: Joi.number().required()
@@ -5109,16 +5721,16 @@ function validateAlterarContrato(contrato){
         nome: Joi.string().min(5).max(50),
         descricao: Joi.string().min(1).max(1000),
         conclusao: Joi.string().min(1).max(1000),
-        tipo: Joi.string().valid('construcao', 'outro'),
+        tipo: Joi.string().valid('Construcao', 'Outro'),
         dataInicio: Joi.date(),
-        dataFim: Joi.date().greater(Joi.ref('dataInicio')),
-        assinaturas: Joi.array().items(Joi.object({
+        dataFim: Joi.date().min(Joi.ref('dataInicio')),
+        assinaturas: Joi.array().min(2).items(Joi.object({
             id: Joi.number().required(), 
-            tipo: Joi.string().valid('Organizacao', 'Politico', 'Empresario').required()
+            tipo: Joi.string().valid('Organizacao', 'Politico', 'Empresario', 'CidadaoRegistado').required()
         })),
-        proposicoes: Joi.array().items(Joi.object({
+        proposicoes: Joi.array().min(1).items(Joi.object({
             id: Joi.number().required(), 
-            tipo: Joi.string().valid('Organizacao', 'Politico', 'Empresario').required()
+            tipo: Joi.string().valid('Organizacao', 'Politico', 'Empresario', 'CidadaoRegistado').required()
         })),
         concursos: Joi.array().items(Joi.object({
             id: Joi.number().required()
@@ -5143,7 +5755,8 @@ function validateOrganizacao(organizacao){
         tipo: Joi.string().valid('Partido', 'Empresa', 'Outro').required(),
         dataCriacao: Joi.date().max('now').required(),
         nome: Joi.string().min(5).max(50).required(),
-        descricao: Joi.string().min(1).max(1000).required()
+        descricao: Joi.string().min(1).max(1000).required(),
+        nipc: Joi.number().min(1).max(999999999).required()
     })
 
     return schema.validate(organizacao)
@@ -5155,7 +5768,8 @@ function validateAlterarOrganizacao(organizacao){
         tipo: Joi.string().valid('Partido', 'Empresa', 'Outro'),
         dataCriacao: Joi.date().max('now'),
         nome: Joi.string().min(5).max(50),
-        descricao: Joi.string().min(1).max(1000)
+        descricao: Joi.string().min(1).max(1000),
+        nipc: Joi.number().min(1).max(999999999)
     })
 
     return schema.validate(organizacao)
@@ -5164,7 +5778,6 @@ function validateAlterarOrganizacao(organizacao){
 function validateComentario(comentario){
 
     const schema = Joi.object({
-        registo: Joi.number().min(1).required(),
         descricao: Joi.string().min(1).max(1000).required()
     })
 
@@ -5180,7 +5793,9 @@ function validateVoto(voto){
     return schema.validate(voto)
 }
 
-function generateTokens(userInfo, session, res){
+function generateTokens(userInfo, res){
+
+    var session = driver.session();
 
     var accessToken = jwt.sign(userInfo, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '10m'});
     var refreshToken = jwt.sign(userInfo, process.env.REFRESH_TOKEN_SECRET);
@@ -5207,7 +5822,7 @@ function validateToken(req, res){
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
     if (token == null){
-        res.status(401).send("Token de acesso em falta.");
+        res.status(401).send("Efetue login para poder aceder a esta funcionalidade");
         return;
     }
 
@@ -5215,7 +5830,7 @@ function validateToken(req, res){
         
         if(error){
             console.log(error);
-            res.status(403).send("Token inválido.");
+            res.status(403).send("A sua sessão expirou. Faça login novamente.");
             return;
         } else {
             user = u;
@@ -5242,29 +5857,16 @@ async function refreshToken(userInfo, refreshToken, session, node){
         })
 }
 
-function deleteToken(user, refreshToken, session, res){
+function deleteToken(refreshToken, res){
+
+    var session = driver.session();
 
     var trans = session.beginTransaction();
 
-    trans.run(`MATCH (r:RefreshToken) WHERE r.token = '${refreshToken}' RETURN r`)
+    trans.run(`MATCH (r:RefreshToken) WHERE r.token = '${refreshToken}' WITH r, r AS token DELETE r RETURN token`)
         .then(async (result) => {
             if(result.records.length > 0){
-                jwt.verify(result.records[0]._fields[0].properties.token, process.env.REFRESH_TOKEN_SECRET, (error, u) => {
-                    if(!error && u.id == user.id && u.tipo == user.tipo){
-                        trans.run(`MATCH (r:RefreshToken) WHERE r.token = '${refreshToken}' DELETE r`)
-                            .then((result) => {
-                                res.status(200).send("Logged out.");
-                                trans.commit();
-                            })
-                            .catch((error) => {
-                                trans.rollback();
-                                console.log(error);
-                                res.status(400).send("Algo correu mal com a query.");
-                            })
-                    } else {
-                        res.status(401).send("O refresh token enviado não corresponde ao user com que está logado.");
-                    }
-                });
+                res.status(200).send("Logged out.");
             } else {
                 res.status(401).send("Refresh token inválido.");
             }
