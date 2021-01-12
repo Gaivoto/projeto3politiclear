@@ -1,7 +1,7 @@
 <template>
     <div v-if="info.cidadaoRegistado">
-        <h2>Nome: {{ info.cidadaoRegistado.nome }}</h2>
-        <h3>Cartão de cidadão: {{ info.cidadaoRegistado.nCC }}</h3>
+        <h2><b>Nome:</b> {{ info.cidadaoRegistado.nome }}</h2>
+        <h3><b>Cartão de cidadão:</b> {{ info.cidadaoRegistado.nCC }}</h3>
     </div>
 </template>
 

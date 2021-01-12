@@ -1,8 +1,7 @@
 <template>
-    <div>
-        <h3>Votar: </h3>
-        <button @click="votar(1)" v-bind:class="{ votado: votadoPos }">+1</button>
-        <button @click="votar(-1)" v-bind:class="{ votado: votadoNeg }">-1</button>
+    <div id="wrapperNovoVoto">
+        <button @click="votar(1)" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick" v-bind:class="{ votadoP: votadoPos }">Concordo</button>
+        <button @click="votar(-1)" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick" v-bind:class="{ votadoN: votadoNeg }">Discordo</button>
     </div>
 </template>
 
@@ -17,6 +16,17 @@ export default {
     methods: {
         votar(valor){
             this.$emit('votar', valor);
+        },
+        startBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.add("clicked");
+            }
+            
+        },
+        finishBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.remove("clicked");  
+            }
         }
     },
     computed: {
@@ -47,7 +57,24 @@ export default {
 </script>
 
 <style scoped>
-    .votado{
+    .votadoP{
         background-color: green;
+    }
+
+    .votadoN{
+        background-color: red;
+    }
+
+    #wrapperNovoVoto {
+        margin: 10px;
+    }
+
+    button {
+        margin: 0px 10px 0px 10px;
+        width: 100px;
+    }
+
+    h3 {
+        display: inline;
     }
 </style>

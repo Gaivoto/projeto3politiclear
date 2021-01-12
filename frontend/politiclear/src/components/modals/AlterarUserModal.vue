@@ -1,46 +1,49 @@
 <template>
-    <div v-if="this.user.user">
-        <h3>Preencha apenas os campos que pretende alterar</h3>
-        <h3>Nome atual: {{ this.user.user.nome }}</h3>
-        <h3>Username atual: {{ this.user.user.username }}</h3>
-        <h3>Cartão cidadão atual: {{ this.user.user.nCC }}</h3>
-        <label for="nome">Nome: </label>
-        <input type="text" name="nome" v-model="nome" autocomplete="off"><br>
-        <label for="username">Username: </label>
-        <input type="text" name="username" v-model="username" autocomplete="off"><br>
-        <label for="password">Password: </label>
-        <input type="password" name="password" v-model="password" autocomplete="off"><br>
-        <label for="confpassword">Confirmar password: </label>
-        <input type="password" name="confpassword" v-model="confpassword" autocomplete="off"><br>
-        <label for="nCC">Cartão de cidadão: </label>
-        <input type="number" min="1" max="99999999" name="nCC" v-model="nCC" autocomplete="off"><br>
-        <div v-if="this.user.user.tipoUser == 'Politico'">
-            <label for="tipo">Partido: </label>
-            <select name="tipo" v-model="partido">
-                <option v-for="par in partidos" v-bind:key="par.id" v-bind:value="par.id">{{ par.nome }}</option>
-            </select><br>
-            <label for="habilitacoes">Habilitações: </label>
-            <select name="habilitacoes" v-model="habilitacoes">
-                <option value="Nenhuma">Nenhuma</option>
-                <option value="4º ano">4º ano</option>
-                <option value="6º ano">6º ano</option>
-                <option value="9º ano">9º ano</option>
-                <option value="12º ano">12º ano</option>
-                <option value="Licenciatura">Licenciatura</option>
-                <option value="Mestrado">Mestrado</option>
-                <option value="Doutoramento">Doutoramento</option>
-            </select><br>
-            <label for="circuloEleitoral">Círculo eleitoral: </label>
-            <select name="circuloEleitoral" v-model="circuloEleitoral">
-                <option value="Norte">Norte</option>
-                <option value="Centro">Centro</option>
-                <option value="Sul">Sul</option>
-                <option value="Açores">Açores</option>
-                <option value="Madeira">Madeira</option>
-            </select><br>
-        </div>
-        <button @click="alterar">Alterar</button>
-        <button @click="cancelar">Cancelar</button>
+    <div id="wrapper" @click="cancelar">
+        <div v-if="this.user.user" id="innerDiv">
+            <h3>Alterar Utilizador</h3>
+            <h3>Deixe em branco os campos que não pretende alterar.</h3>
+            <h4>Nome atual: {{ this.user.user.nome }}</h4>
+            <h4>Username atual: {{ this.user.user.username }}</h4>
+            <h4>Cartão cidadão atual: {{ this.user.user.nCC }}</h4>
+            <label for="nome">Nome: </label>
+            <input type="text" name="nome" v-model="nome" autocomplete="off"><br>
+            <label for="username">Username: </label>
+            <input type="text" name="username" v-model="username" autocomplete="off"><br>
+            <label for="password">Password: </label>
+            <input type="password" name="password" v-model="password" autocomplete="off"><br>
+            <label for="confpassword">Confirmar password: </label>
+            <input type="password" name="confpassword" v-model="confpassword" autocomplete="off"><br>
+            <label for="nCC">Cartão de cidadão: </label>
+            <input type="number" min="1" max="99999999" name="nCC" v-model="nCC" autocomplete="off"><br>
+            <div v-if="this.user.user.tipoUser == 'Politico'">
+                <label for="tipo">Partido: </label>
+                <select name="tipo" v-model="partido">
+                    <option v-for="par in partidos" v-bind:key="par.id" v-bind:value="par.id">{{ par.nome }}</option>
+                </select><br>
+                <label for="habilitacoes">Habilitações: </label>
+                <select name="habilitacoes" v-model="habilitacoes">
+                    <option value="Nenhuma">Nenhuma</option>
+                    <option value="4º ano">4º ano</option>
+                    <option value="6º ano">6º ano</option>
+                    <option value="9º ano">9º ano</option>
+                    <option value="12º ano">12º ano</option>
+                    <option value="Licenciatura">Licenciatura</option>
+                    <option value="Mestrado">Mestrado</option>
+                    <option value="Doutoramento">Doutoramento</option>
+                </select><br>
+                <label for="circuloEleitoral">Círculo eleitoral: </label>
+                <select name="circuloEleitoral" v-model="circuloEleitoral">
+                    <option value="Norte">Norte</option>
+                    <option value="Centro">Centro</option>
+                    <option value="Sul">Sul</option>
+                    <option value="Açores">Açores</option>
+                    <option value="Madeira">Madeira</option>
+                </select><br>
+            </div>
+            <button @click="alterar" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick" id="btnAlterar">Alterar</button>
+            <button id="close" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Cancelar</button>
+        </div>    
     </div>
 </template>
 
@@ -122,15 +125,86 @@ export default {
                 this.habilitacoes = "";    
             }
         },
-        cancelar(){
-            this.$emit('cancelar');
+        cancelar(e){
+            if(e.srcElement.id == "wrapper" || e.srcElement.id == "close"){
+                this.$emit('cancelar');  
+
+                this.nome = "";
+                this.username = "";
+                this.password = "";
+                this.confpassword = "";
+                this.nCC = 0;
+                this.partido = 0;
+                this.circuloEleitoral = "";
+                this.habilitacoes = "";    
+            }
+        },
+        startBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.add("clicked");
+            }
+            
+        },
+        finishBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.remove("clicked");  
+            }
         }
     }
 }
 </script>
 
 <style scoped>
-    div{
-        border: 2px black solid;
+    #wrapper {
+        position: absolute;
+        top: 0px;
+        left: 0px;
+        width: 100%;
+        height: 100%;
+        background: rgba(60, 60, 60, 0.8);
+    }
+
+    #innerDiv {
+        background-color: white;
+        width: 25%;
+        height: 85%;
+        padding: 30px 50px 50px 50px;
+        margin: auto;
+        margin-top: 1%;
+        text-align: justify;
+        border-radius: 10px;
+    }
+
+    #innerDiv h3 {
+        font-size: 25px;
+        text-align: center;
+    }
+
+    #innerDiv button {
+        margin: 20px 8px 0px 8px;
+        width: 100px;
+    }
+
+    #innerDiv #btnAlterar {
+        margin-left: 80px;
+    }
+
+    #innerDiv input, #innerDiv select {
+        width: 200px;
+        height: 25px;
+        margin: 6px 0px 6px 0px;
+        border-radius: 5px;
+        padding: 0px 10px 0px 10px;
+    }
+
+    #innerDiv label {
+        display: inline-block;
+        width: 160px;
+    }
+
+    #innerDiv select {
+        border: 2px solid black;
+        height: 28px;
+        width: 224px;
     }
 </style>

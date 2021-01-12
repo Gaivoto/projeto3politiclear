@@ -1,12 +1,13 @@
 <template>
     <div>
-        <EventoInfo v-bind:info="this.info"/>
-        <button v-if="possivelParticipar" @click="toggleParticipar">Participar neste evento</button>
-        <button v-if="possivelSair" @click="toggleParticipar">Cancelar participação</button>
-        <router-link tag="button" v-if="possivelAlterar" :to="{path: '/eventos/'+ this.$route.params.id + '/edit'}">Alterar este evento</router-link>
+        <EventoInfo class="info" v-bind:info="this.info"/>
+        <button @click="node" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Ver rede de contactos</button>
+        <button v-if="possivelParticipar" @click="toggleParticipar" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Participar neste evento</button>
+        <button v-if="possivelSair" @click="toggleParticipar" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Cancelar participação</button>
+        <router-link tag="button" v-if="possivelAlterar" @mousedown.native="startBtnClick" @mouseup.native="finishBtnClick" @mouseleave.native="finishBtnClick" :to="{path: '/eventos/'+ this.$route.params.id + '/edit'}">Alterar este evento</router-link>
         <router-view></router-view>
-        <button v-if="possivelEliminar" @click="toggleDeleteModal">Eliminar este evento</button>
-        <EventoInfoLists v-bind:participantes="this.info.participantes"/>
+        <button v-if="possivelEliminar" @click="toggleDeleteModal" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Eliminar este evento</button>
+        <EventoInfoLists class="listaInfo" v-bind:participantes="this.info.participantes"/>
         <DeleteModal v-show="isDeleteVisible" msg="evento" v-on:sim="apagarEvento" v-on:nao="toggleDeleteModal"/>
         <ErrorModal v-show="isErrorVisible" v-bind:msg="this.msg" v-on:fechar="hideError"/>
     </div>
@@ -94,6 +95,10 @@ export default {
         }
     },
     methods: {
+        node(){
+            this.$store.commit('setNode', {tipo: "Evento", id: this.info.evento.id});
+            this.$router.push("/grafo");
+        },
         showError(msg){
             this.isErrorVisible = true;
             this.msg = msg;
@@ -135,6 +140,9 @@ export default {
                 } else {
                     this.showError(error.response.data);
                 }
+                if(error.response.status == "403"){
+                    this.$store.commit('setUser', {info: {tipo: ""}, tokens: {}});
+                }
             });
         },
         apagarEvento(){
@@ -155,16 +163,32 @@ export default {
                     this.showError(error.response.data.details[0].message);
                 } else {
                     this.showError(error.response.data);
-                };
+                }
+                if(error.response.status == "403"){
+                    this.$store.commit('setUser', {info: {tipo: ""}, tokens: {}});
+                }
             })
         },
         toggleDeleteModal(){
             this.isDeleteVisible = !this.isDeleteVisible;
+        },
+        startBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.add("clicked");
+            }
+            
+        },
+        finishBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.remove("clicked");  
+            }
         }
     }
 }
 </script>
 
 <style scoped>
-
+    button {
+        margin: 0px 10px 0px 10px;
+    }
 </style>

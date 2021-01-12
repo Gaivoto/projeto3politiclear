@@ -1,9 +1,9 @@
 <template>
     <div>
-        <h4>Autor: {{ this.info.tipoAutor + " - " + this.info.nomeAutor }}</h4>
-        <h4>Data: {{ this.info.data.day.low + "/" + this.info.data.month.low + "/" + this.info.data.year.low }}</h4>
-        <h4>Descrição: {{ this.info.descricao }}</h4>
-        <button v-if="possivelApagar" @click="apagar">Apagar comentário</button>
+        <h4><b>Autor:</b> {{ this.info.tipoAutor + " - " + this.info.nomeAutor }}</h4>
+        <h4><b>Data:</b> {{ this.info.data.day.low + "/" + this.info.data.month.low + "/" + this.info.data.year.low }}</h4>
+        <h4><b>Descrição:</b> {{ this.info.descricao }}</h4>
+        <button v-if="possivelApagar" @click="apagar" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Apagar comentário</button>
     </div>
 </template>
 
@@ -24,13 +24,21 @@ export default {
     methods: {
         apagar(){
             this.$emit('apagar', this.info.id);
+        },
+        startBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.add("clicked");
+            }
+            
+        },
+        finishBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.remove("clicked");  
+            }
         }
     }
 }
 </script>
 
 <style scoped>
-div {
-    border: 1px solid black;
-}
 </style>

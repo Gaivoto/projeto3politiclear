@@ -1,80 +1,94 @@
 <template>
-    <div>
-        <label for="nome">Nome:</label>
-        <input tSype="text" name="titulo" v-model="nome" autocomplete="off"><br>
-        <label for="tipo">Tipo:</label>
-        <select name="tipo" v-model="tipo">
-            <option value="Construcao">Construção</option>
-            <option value="Outro">Outro</option>
-        </select><br>
-        <label for="dataInicio">Data de início:</label>
-        <input type="date" name="dataInicio" v-model="dataInicio"><br>
-        <label for="dataFim">Data de fim:</label>
-        <input type="date" name="dataFim" v-model="dataFim"><br>
-        <label for="descricao">Descrição:</label><br>
-        <textarea name="descricao" cols="50" rows="20" v-model="descricao"></textarea><br>
-        <label for="conclusao">Conclusão:</label><br>
-        <textarea name="conclusao" cols="50" rows="20" v-model="conclusao"></textarea><br>
-        <div>
-            <label for="tipoPro">Tipo de preponente: </label>
-            <select name="tipoPro" v-model="tipoPesquisaPro">
-                <option value="">Todos</option>
-                <option value="Politico">Político</option>
-                <option value="Empresario">Empresário</option>
-                <option value="Organizacao">Organização</option>
-                <option value="CidadaoRegistado">Cidadão Registado</option>
-            </select>
-            <label for="pesquisaPro">Pesquisa: </label>
-            <input type="text" name="pesquisaPro" v-model="textoPesquisaPro" autocomplete="off">
-            <div v-for="pro in proposicoesPorAdicionar" v-bind:key="pro.key">
-                <h3 v-if="displayP(pro)">{{pro.tipoAssinatura + " - " + pro.assinatura.nome}}<button @click="adicionarProposicao(pro)">Adicionar</button></h3>
+    <div class="outer">
+        <div class="wrapperInfo">
+            <label for="nome">Nome:</label>
+            <input class="normalInput" type="text" name="titulo" v-model="nome" autocomplete="off"><br>
+            <label for="tipo">Tipo:</label>
+            <select name="tipo" v-model="tipo">
+                <option value="Construcao">Construção</option>
+                <option value="Outro">Outro</option>
+            </select><br>
+            <label for="dataInicio">Data de início:</label>
+            <input class="normalInput" type="date" name="dataInicio" v-model="dataInicio"><br>
+            <label for="dataFim">Data de fim:</label>
+            <input class="normalInput" type="date" name="dataFim" v-model="dataFim"><br>
+            <label for="descricao">Descrição:</label><br>
+            <textarea name="descricao" cols="50" rows="20" v-model="descricao"></textarea><br>
+            <label for="conclusao">Conclusão:</label><br>
+            <textarea name="conclusao" cols="50" rows="20" v-model="conclusao"></textarea><br>    
+        </div>
+        <div class="wrapperTabelas">
+            <div class="divSearchbar">
+                <label for="tipoPro">Tipo de preponente: </label>
+                <select name="tipoPro" v-model="tipoPesquisaPro" style="margin-right: 450px;">
+                    <option value="">Todos</option>
+                    <option value="Politico">Político</option>
+                    <option value="Empresario">Empresário</option>
+                    <option value="Organizacao">Organização</option>
+                    <option value="CidadaoRegistado">Cidadão Registado</option>
+                </select>
+                <label for="pesquisaPro">Pesquisa: </label>
+                <input type="text" name="pesquisaPro" v-model="textoPesquisaPro" autocomplete="off">    
+            </div>
+            <h3>Preponentes por adicionar:</h3>
+            <h3>Preponentes adicionados:</h3>
+            <div class="divTable">
+                <ul>
+                    <li v-for="pro in proposicoesPorAdicionar" v-bind:key="pro.key" v-show="displayP(pro)"><p>{{pro.tipoAssinatura + " - " + pro.assinatura.nome}}</p><button class="btnLista" @click="adicionarProposicao(pro)" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Adicionar</button></li>
+                </ul>
+            </div>
+            <div class="divTable">
+                <ul>
+                    <li v-for="pro in proposicoesAdicionadas" v-bind:key="pro.key" v-show="displayP(pro)"><p>{{pro.tipoAssinatura + " - " + pro.assinatura.nome}}</p><button class="btnLista" @click="removerProposicao(pro)" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Remover</button></li>
+                </ul>
             </div>
         </div>
-        <div>
-            <h2>Preponentes adicionados:</h2>
-            
-            <div v-for="pro in proposicoesAdicionadas" v-bind:key="pro.key">
-                <h3>{{pro.tipoAssinatura + " - " + pro.assinatura.nome}}<button @click="removerProposicao(pro)">Remover</button></h3>
+        <div class="wrapperTabelas">
+            <div class="divSearchbar">
+                <label for="tipoAss">Tipo de assinatura: </label>
+                <select name="tipoAss" v-model="tipoPesquisaAss" style="margin-right: 450px;">
+                    <option value="">Todos</option>
+                    <option value="Politico">Político</option>
+                    <option value="Empresario">Empresário</option>
+                    <option value="Organizacao">Organização</option>
+                    <option value="CidadaoRegistado">Cidadão Registado</option>
+                </select>
+                <label for="pesquisaAss">Pesquisa: </label>
+                <input type="text" name="pesquisaAss" v-model="textoPesquisaAss" autocomplete="off">    
+            </div>
+            <h3>Assinaturas por adicionar:</h3>
+            <h3>Assinaturas adicionadas:</h3>
+            <div class="divTable">
+                <ul>
+                    <li v-for="ass in assinaturasPorAdicionar" v-bind:key="ass.key" v-show="displayA(ass)"><p>{{ass.tipoAssinatura + " - " + ass.assinatura.nome}}</p><button class="btnLista" @click="adicionarAssinatura(ass)" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Adicionar</button></li>
+                </ul>
+            </div>
+            <div class="divTable">
+                <ul>
+                    <li v-for="ass in assinaturasAdicionadas" v-bind:key="ass.key" v-show="displayA(ass)"><p>{{ass.tipoAssinatura + " - " + ass.assinatura.nome}}</p><button class="btnLista" @click="removerAssinatura(ass)" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Remover</button></li>
+                </ul>
             </div>
         </div>
-        
-        <div>
-            <label for="tipoAss">Tipo de assinatura: </label>
-            <select name="tipoAss" v-model="tipoPesquisaAss">
-                <option value="">Todos</option>
-                <option value="Politico">Político</option>
-                <option value="Empresario">Empresário</option>
-                <option value="Organizacao">Organização</option>
-                <option value="CidadaoRegistado">Cidadão Registado</option>
-            </select>
-            <label for="pesquisaAss">Pesquisa: </label>
-            <input type="text" name="pesquisaAss" v-model="textoPesquisaAss" autocomplete="off">
-            <div v-for="ass in assinaturasPorAdicionar" v-bind:key="ass.key">
-                <h3 v-if="displayA(ass)">{{ass.tipoAssinatura + " - " + ass.assinatura.nome}}<button @click="adicionarAssinatura(ass)">Adicionar</button></h3>
+        <div class="wrapperTabelas">
+            <div class="divSearchbar">
+                <label for="pesquisaCon">Pesquisa de concurso: </label>
+                <input type="text" name="pesquisaCon" v-model="textoPesquisaCon" autocomplete="off">    
+            </div>
+            <h3>Concursos por adicionar:</h3>
+            <h3>Concursos adicionados:</h3>
+            <div class="divTable">
+                <ul>
+                    <li v-for="con in concursosPorAdicionar" v-bind:key="con.id" v-show="displayC(con)"><p>{{con.nome}}</p><button class="btnLista" @click="adicionarConcurso(con)" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Adicionar</button></li>
+                </ul>
+            </div>
+            <div class="divTable">
+                <ul>
+                    <li v-for="con in concursosAdicionados" v-bind:key="con.id" v-show="displayC(con)"><p>{{con.nome}}</p><button class="btnLista" @click="removerConcurso(con)" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Remover</button></li>
+                </ul>
             </div>
         </div>
-        <div>
-            <h2>Assinaturas adicionadas:</h2>
-            <div v-for="ass in assinaturasAdicionadas" v-bind:key="ass.key">
-                <h3>{{ass.tipoAssinatura + " - " + ass.assinatura.nome}}<button @click="removerAssinatura(ass)">Remover</button></h3>
-            </div>
-        </div>
-
-        <div>
-            <label for="pesquisaCon">Pesquisa de concurso: </label>
-            <input type="text" name="pesquisaCon" v-model="textoPesquisaCon" autocomplete="off">
-            <div v-for="con in concursosPorAdicionar" v-bind:key="con.id">
-                <h3 v-if="displayC(con)">{{con.nome}}<button @click="adicionarConcurso(con)">Adicionar</button></h3>
-            </div>
-        </div>
-        <div>
-            <h2>Concursos adicionados:</h2>
-            <div v-for="con in concursosAdicionados" v-bind:key="con.id">
-                <h3>{{con.nome}}<button @click="removerConcurso(con)">Remover</button></h3>
-            </div>
-        </div>
-        <button @click="create">Alterar contrato</button>
-        <button @click="cancelar">Cancelar</button>
+        <button class="outerBtn" @click="create" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Alterar contrato</button>
+        <button class="outerBtn" @click="cancelar" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Cancelar</button>
     </div>
 </template>
 
@@ -332,13 +346,157 @@ export default {
             this.textoPesquisaPar = "";
             this.tipoPesquisaVen = "";
             this.textoPesquisaVen = "";
+        },
+        startBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.add("clicked");
+            }
+            
+        },
+        finishBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.remove("clicked");  
+            }
         }
     }
 }
 </script>
 
 <style scoped>
-div {
-    border: 1px solid black;
-}
+    li {
+        list-style: none;
+        text-align: justify;
+        margin: 15px 20px 15px 10px;
+    }
+
+    .outer {
+        height: 3660px;
+        background-color: #8CA3B4;
+    }
+
+    .wrapperInfo {
+        width: 60%;
+        margin-left: 17%;
+        margin-right: 19%;
+        text-align: justify;
+    }
+
+    .wrapperInfo label {
+        font-size: 17px;
+        margin: 15px 0px 15px 50px;
+        font-weight: bold;
+        width: 200px;
+        display: inline-block;
+    }
+
+    .wrapperInfo .radioInput {
+        position: relative;
+        top: 5px;
+        height: 25px;
+        margin: 10px 0px 20px 10px;
+        padding: 0px 10px 0px 10px;
+    }
+
+    .wrapperInfo .normalInput {
+        width: 200px;
+        height: 25px;
+        margin: 10px 0px 20px 10px;
+        border-radius: 5px;
+        padding: 0px 10px 0px 10px;
+    }
+
+    .wrapperInfo select {
+        width: 220px;
+        height: 28px;
+        margin: 10px 0px -5px 10px;
+        border-radius: 5px;
+        padding: 0px 10px 0px 10px;
+    }
+
+    .wrapperInfo textarea {
+        width: 1000px;
+        height: 300px;
+        margin: 6px 0px 6px 0px;
+        border-radius: 5px;
+        padding: 0px 10px 0px 10px;
+    }
+
+    .divSearchbar {
+        background-color: #B2B8CB;
+        padding: 20px 35px 45px 35px;
+        width: 88%;
+        border-radius: 20px;
+        margin: auto;
+        margin-bottom: 25px;
+    }
+
+    .divSearchbar > select {
+        height: 25px;
+        width: 300px;
+        font-size: 16px;
+        margin: -2px 20px 0px 5px;
+        float: left;
+        border-radius: 5px;
+        background-color: #DDDDDD;
+    }
+
+    .divSearchbar > input {
+        height: 18px;
+        width: 300px;
+        font-size: 16px;
+        margin-right: 15px;
+        float: right;
+        border-radius: 5px;
+        background-color: #DDDDDD;
+    }
+
+    .divSearchbar > label {
+        font-size: 18px;
+        font-weight: 600;
+        float: left;
+        border-radius: 5px;
+    }
+
+    .wrapperTabelas {
+        height: 850px;
+        margin-top: 10px;
+    }
+
+    .divTable {
+        height: 600px;
+        float: left;
+        width: 44%;
+        margin: 2% 0.1% 0% 2.7%;
+        padding: 20px 15px 20px 15px;
+        background-color: #cccccc;
+        border-radius: 20px;
+        overflow: auto;
+    }
+
+    h3 {
+        color: black;
+        font-size: 20px;
+        margin-left: 14.3%;
+        margin-right: 14.3%;
+        display: inline;
+        background-color: #9e8a7c;
+        padding: 6px 15px 6px 15px;
+        border-radius: 15px;
+    }
+
+    p {
+        display: inline;
+        width: 200px;
+    }
+
+    .btnLista {
+        float: right;
+    }
+
+    .outerBtn {
+        margin: 25px 25px 10px 25px;
+        width: 160px;
+        padding: 5px;
+        height: 35px;
+    }
 </style>

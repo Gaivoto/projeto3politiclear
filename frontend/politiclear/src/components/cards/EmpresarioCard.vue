@@ -1,8 +1,8 @@
 <template>
     <div>
         <router-link :to="{path: '/empresarios/' + this.info.id}" tag="div">
-            <h4>Nome: {{ this.info.nome }}</h4>
-            <h4>CC: {{ this.info.nCC }}</h4>
+            <h4><b>Nome:</b> {{ this.info.nome }}</h4>
+            <h4><b>CC:</b> {{ this.info.nCC }}</h4>
         </router-link>
         <router-view/>
     </div>
@@ -21,7 +21,4 @@ export default {
 </script>
 
 <style scoped>
-div {
-    border: 1px solid black;
-}
 </style>

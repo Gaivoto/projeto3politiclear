@@ -1,13 +1,14 @@
 <template>
     <div>
-        <ProfileInfo v-bind:info="this.info.user"/>
-        <button v-if="possivelAlterarPerfil" @click="toggleAlterar">Alterar perfil</button>
+        <ProfileInfo class="info" v-bind:info="this.info.user"/>
+        <button class="btn" @click="node" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Ver rede de contactos</button>
+        <button class="btn" v-if="possivelAlterarPerfil" @click="toggleAlterar" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Alterar perfil</button>
         <AlterarPerfilModal v-show="isAlterarVisible" v-bind:info="this.info.user" v-on:alterar="alterarPerfil" v-on:cancelar="toggleAlterar" v-on:erro="showError"/>
-        <ProfileList v-bind:profile="this.info"/>
-        <router-link v-if="possivelCriarRegisto" tag="button" to="/registos/create">Criar novo registo</router-link>
-        <router-link v-if="possivelCriarOutros" tag="button" to="/concursos/create">Criar novo concurso</router-link>
-        <router-link v-if="possivelCriarOutros" tag="button" to="/contratos/create">Criar novo contrato</router-link>
-        <router-link v-if="possivelCriarOutros" tag="button" to="/eventos/create">Criar novo evento</router-link>
+        <ProfileList class="listaInfo" v-bind:profile="this.info"/>
+        <router-link id="btnNovoRegisto" class="btnCriar" v-if="possivelCriarRegisto" tag="button" @mousedown.native="startBtnClick" @mouseup.native="finishBtnClick" @mouseleave.native="finishBtnClick" to="/registos/create">Criar novo registo</router-link>
+        <router-link id="btnNovoConcurso" class="btnCriar" v-if="possivelCriarOutros" tag="button" @mousedown.native="startBtnClick" @mouseup.native="finishBtnClick" @mouseleave.native="finishBtnClick" to="/concursos/create">Criar novo concurso</router-link>
+        <router-link id="btnNovoContrato" class="btnCriar" v-if="possivelCriarOutros" tag="button" @mousedown.native="startBtnClick" @mouseup.native="finishBtnClick" @mouseleave.native="finishBtnClick" to="/contratos/create">Criar novo contrato</router-link>
+        <router-link id="btnNovoEvento" class="btnCriar" v-if="possivelCriarOutros" tag="button" @mousedown.native="startBtnClick" @mouseup.native="finishBtnClick" @mouseleave.native="finishBtnClick" to="/eventos/create">Criar novo evento</router-link>
         <router-view></router-view>
         <ErrorModal v-show="isErrorVisible" v-bind:msg="this.msg" v-on:fechar="hideError"/>
     </div>
@@ -61,6 +62,9 @@ export default {
             } else {
                 this.showError(error.response.data);
             }
+            if(error.response.status == "403"){
+                this.$store.commit('setUser', {info: {tipo: ""}, tokens: {}});
+            }
         });
     },
     computed: {
@@ -75,6 +79,10 @@ export default {
         }
     },
     methods: {
+        node(){
+            this.$store.commit('setNode', {tipo: this.info.user.tipoUser, id: this.info.user.id});
+            this.$router.push("/grafo");
+        },
         alterarPerfil(user){
             this.toggleAlterar();
             axios({
@@ -108,6 +116,9 @@ export default {
                     } else {
                         this.showError(error.response.data);
                     }
+                    if(error.response.status == "403"){
+                        this.$store.commit('setUser', {info: {tipo: ""}, tokens: {}});
+                    }
                 }); 
             })
             .catch(error =>{
@@ -115,6 +126,9 @@ export default {
                     this.showError(error.response.data.details[0].message);
                 } else {
                     this.showError(error.response.data);
+                }
+                if(error.response.status == "403"){
+                    this.$store.commit('setUser', {info: {tipo: ""}, tokens: {}});
                 }
             })
         },
@@ -128,11 +142,49 @@ export default {
         hideError(){
             this.isErrorVisible = false;
             this.msg = "";
+        },
+        startBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.add("clicked");
+            }
+            
+        },
+        finishBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.remove("clicked");  
+            }
         }
     }
 }
 </script>
 
 <style scoped>
+    #btnNovoRegisto {
+        position: absolute;
+        left: 80px;
+        top: 670px;
+    }
 
+    #btnNovoConcurso {
+        position: absolute;
+        left: 680px;
+        top: 670px;
+    }
+
+    #btnNovoContrato {
+        position: absolute;
+        left: 1000px;
+        top: 670px;
+    }
+
+    #btnNovoEvento {
+        position: absolute;
+        left: 1310px;
+        top: 670px;
+    }
+
+    .btn {
+        margin: 20px 10px 20px 10px;
+        width: 200px;
+    }
 </style>

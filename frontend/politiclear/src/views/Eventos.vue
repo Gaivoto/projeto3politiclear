@@ -1,9 +1,9 @@
 <template>
     <div>
-        <EventosSearch v-on:pesquisar="updateList"/>
-        <ElementList tipo="EventoCard" v-bind:lista="this.lista"/>
-        <router-link v-if="possivelCriar" tag="button" to="/eventos/create">Criar novo evento</router-link>
+        <EventosSearch class="searchbar" v-on:pesquisar="updateList"/>
+        <router-link class="btnCriar" v-if="possivelCriar" tag="button" @mousedown.native="startBtnClick" @mouseup.native="finishBtnClick" @mouseleave.native="finishBtnClick" to="/eventos/create">Criar novo evento</router-link>
         <router-view></router-view>
+        <ElementList class="lista" tipo="EventoCard" v-bind:lista="this.lista"/>
         <ErrorModal v-show="isErrorVisible" v-bind:msg="this.msg" v-on:fechar="hideError"/>
     </div>
 </template>
@@ -95,6 +95,17 @@ export default {
         hideError(){
             this.isErrorVisible = false;
             this.msg = "";
+        },
+        startBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.add("clicked");
+            }
+            
+        },
+        finishBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.remove("clicked");  
+            }
         }
     }
 }

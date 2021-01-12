@@ -5,11 +5,11 @@
             <router-link tag="h3" to="/areaAdm/orgs">Organizações</router-link>
             <router-view></router-view>
         </div>
-        <UsersSearch v-on:pesquisar="updateList"/>
-        <ElementList tipo="UserCard" v-bind:lista="this.lista" v-on:alterar-user="iniciarAlterar" v-on:desativar-user="desativarUser"/>
+        <UsersSearch class="searchbar" v-on:pesquisar="updateList"/>
+        <button class="btnCriar" @click="toggleCriar" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Criar novo utilizador</button>
+        <ElementList class="lista listaAdm" tipo="UserCard" v-bind:lista="this.lista" v-on:alterar-user="iniciarAlterar" v-on:desativar-user="desativarUser"/>
         <CriarUserModal v-show="isCriarVisible" v-bind:partidos="partidos" v-on:criar="criarUser" v-on:cancelar="toggleCriar" v-on:erro="showError"/>
         <AlterarUserModal v-show="isAlterarVisible" v-bind:user="user" v-bind:partidos="partidos" v-on:alterar="alterarUser" v-on:erro="showError" v-on:cancelar="toggleAlterar"/>
-        <button @click="toggleCriar">Criar novo utilizador</button>
         <ErrorModal v-show="isErrorVisible" v-bind:msg="this.msg" v-on:fechar="hideError"/>
     </div>
 </template>
@@ -89,6 +89,9 @@ export default {
                 } else {
                     this.showError(error.response.data);
                 }
+                if(error.response.status == "403"){
+                    this.$store.commit('setUser', {info: {tipo: ""}, tokens: {}});
+                }
             });
         },
         iniciarAlterar(user){
@@ -107,6 +110,9 @@ export default {
                     this.showError(error.response.data.details[0].message);
                 } else {
                     this.showError(error.response.data);
+                }
+                if(error.response.status == "403"){
+                    this.$store.commit('setUser', {info: {tipo: ""}, tokens: {}});
                 }
             });
 
@@ -140,6 +146,9 @@ export default {
                 } else {
                     this.showError(error.response.data);
                 }
+                if(error.response.status == "403"){
+                    this.$store.commit('setUser', {info: {tipo: ""}, tokens: {}});
+                }
             });
         },
         desativarUser(user){
@@ -167,6 +176,9 @@ export default {
                     this.showError(error.response.data.details[0].message);
                 } else {
                     this.showError(error.response.data);
+                }
+                if(error.response.status == "403"){
+                    this.$store.commit('setUser', {info: {tipo: ""}, tokens: {}});
                 }
             });
         },
@@ -197,6 +209,9 @@ export default {
                         this.showError(error.response.data.details[0].message);
                     } else {
                         this.showError(error.response.data);
+                    }
+                    if(error.response.status == "403"){
+                        this.$store.commit('setUser', {info: {tipo: ""}, tokens: {}});
                     }
                 });
             }
@@ -275,6 +290,9 @@ export default {
                 } else {
                     this.showError(error.response.data);
                 }
+                if(error.response.status == "403"){
+                    this.$store.commit('setUser', {info: {tipo: ""}, tokens: {}});
+                }
             });
 
             axios({
@@ -294,6 +312,9 @@ export default {
                 } else {
                     this.showError(error.response.data);
                 }
+                if(error.response.status == "403"){
+                    this.$store.commit('setUser', {info: {tipo: ""}, tokens: {}});
+                }
             });
         },
         toggleCriar(){
@@ -309,6 +330,17 @@ export default {
         hideError(){
             this.isErrorVisible = false;
             this.msg = "";
+        },
+        startBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.add("clicked");
+            }
+            
+        },
+        finishBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.remove("clicked");  
+            }
         }
     }
 }

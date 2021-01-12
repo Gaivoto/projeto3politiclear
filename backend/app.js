@@ -1449,6 +1449,8 @@ app.get("/api/registos", (req, res) => {
                 break;
         }
     }
+
+    console.log(statement)
     
     session.run(statement)
         .then((result) => {
@@ -5508,6 +5510,435 @@ app.post("/api/registos/:id/votar", (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * 
+ * /api/grafo:
+ *      get:
+ *          description: Obtém todas as entidades e relações entre as mesmas.
+ * 
+ *          responses:
+ *              '200':
+ *                  description: Informação obtida com sucesso. Devolve a informação.
+ *                              
+ *              '400':
+ *                  description: Erro com o pedido.
+ */ 
+app.get("/api/grafo", (req, res) => {
+
+    var session = driver.session();
+
+    var grafo = {nodes: [], links: []};
+
+    var pesquisa = async () => {
+        await session.run("MATCH (p:Politico)-[r*0..1]->(n) RETURN p, r, n")
+            .then(result => {
+                result.records.forEach(record => {
+                    var existeNode = false;
+                    grafo.nodes.forEach(node => {
+                        if(node.id == record._fields[0].identity.low){
+                            existeNode = true;
+                        }    
+                    });
+
+                    if(!existeNode){
+                        grafo.nodes.push({
+                            id: record._fields[0].identity.low,
+                            tipo: record._fields[0].labels[0],
+                            propriedades: {
+                                id: record._fields[0].properties.id.low,
+                                nome: record._fields[0].properties.nome,
+                                nCC: record._fields[0].properties.nCC.low,
+                                habilitacoes: record._fields[0].properties.habilitacoes,
+                                circuloEleitoral: record._fields[0].properties.circuloEleitoral    
+                            }
+                        });   
+                    }
+                    if(record._fields[1] && record._fields[2] && record._fields[2].labels[0] != "Comentario"){
+                        record._fields[1].forEach(rel => {
+                            if(rel.type != "VOTA_EM"){
+                                grafo.links.push({
+                                    source: rel.start.low,
+                                    target: rel.end.low,
+                                    type: rel.type,
+                                    propriedades: rel.properties
+                                });      
+                            } 
+                        });  
+                    }
+                })
+            })
+            .catch(error => {
+                console.log(error);
+                res.status(400).send("Algo correu mal com a query.");
+            })
+
+        await session.run("MATCH (e:Empresario)-[r*0..1]->(n) RETURN e, r, n")
+            .then(result => {
+                result.records.forEach(record => {
+
+                    var existeNode = false;
+
+                    grafo.nodes.forEach(node => {
+                        if(node.id == record._fields[0].identity.low){
+                            existeNode = true;
+                        }    
+                    });
+
+                    if(!existeNode){
+                        grafo.nodes.push({
+                            id: record._fields[0].identity.low,
+                            tipo: record._fields[0].labels[0],
+                            propriedades: {
+                                id: record._fields[0].properties.id.low,
+                                nome: record._fields[0].properties.nome,
+                                nCC: record._fields[0].properties.nCC.low   
+                            }
+                        });   
+                    }
+
+                    if(record._fields[1] && record._fields[2] && record._fields[2].labels[0] != "Comentario"){
+                        record._fields[1].forEach(rel => {
+                            if(rel.type != "VOTA_EM"){
+                                grafo.links.push({
+                                    source: rel.start.low,
+                                    target: rel.end.low,
+                                    type: rel.type,
+                                    propriedades: rel.properties
+                                });      
+                            }     
+                        });  
+                    }
+                })
+            })
+            .catch(error => {
+                console.log(error);
+                res.status(400).send("Algo correu mal com a query.");
+            })
+
+        await session.run("MATCH (c:CidadaoCreditado)-[r*0..1]->(n) RETURN c, r, n")
+            .then(result => {
+                result.records.forEach(record => {
+
+                    var existeNode = false;
+
+                    grafo.nodes.forEach(node => {
+                        if(node.id == record._fields[0].identity.low){
+                            existeNode = true;
+                        }    
+                    });
+
+                    if(!existeNode){
+                        grafo.nodes.push({
+                            id: record._fields[0].identity.low,
+                            tipo: record._fields[0].labels[0],
+                            propriedades: {
+                                id: record._fields[0].properties.id.low,
+                                nome: record._fields[0].properties.nome,
+                                nCC: record._fields[0].properties.nCC.low  
+                            }
+                        });   
+                    }
+
+                    if(record._fields[1] && record._fields[2] && record._fields[2].labels[0] != "Comentario"){
+                        record._fields[1].forEach(rel => {
+                            if(rel.type != "VOTA_EM"){
+                                grafo.links.push({
+                                    source: rel.start.low,
+                                    target: rel.end.low,
+                                    type: rel.type,
+                                    propriedades: rel.properties
+                                });      
+                            }    
+                        });  
+                    }
+                })
+            })
+            .catch(error => {
+                console.log(error);
+                res.status(400).send("Algo correu mal com a query.");
+            })
+
+        await session.run("MATCH (c:CidadaoRegistado)-[r*0..1]->(n) RETURN c, r, n")
+            .then(result => {
+                result.records.forEach(record => {
+                    
+                    var existeNode = false;
+
+                    grafo.nodes.forEach(node => {
+                        if(node.id == record._fields[0].identity.low){
+                            existeNode = true;
+                        }    
+                    });
+
+                    if(!existeNode){
+                        grafo.nodes.push({
+                            id: record._fields[0].identity.low,
+                            tipo: record._fields[0].labels[0],
+                            propriedades: {
+                                id: record._fields[0].properties.id.low,
+                                nome: record._fields[0].properties.nome,
+                                nCC: record._fields[0].properties.nCC.low  
+                            }
+                        });   
+                    }
+
+                    if(record._fields[1] && record._fields[2] && record._fields[2].labels[0] != "Comentario"){
+                        record._fields[1].forEach(rel => {
+                            if(rel.type != "VOTA_EM"){
+                                grafo.links.push({
+                                    source: rel.start.low,
+                                    target: rel.end.low,
+                                    type: rel.type,
+                                    propriedades: rel.properties
+                                });      
+                            }  
+                        });  
+                    }
+                })
+            })
+            .catch(error => {
+                console.log(error);
+                res.status(400).send("Algo correu mal com a query.");
+            })
+
+        await session.run("MATCH (o:Organizacao)-[r*0..1]->(n) RETURN o, r, n")
+            .then(result => {
+                result.records.forEach(record => {
+
+                    var existeNode = false;
+
+                    grafo.nodes.forEach(node => {
+                        if(node.id == record._fields[0].identity.low){
+                            existeNode = true;
+                        }    
+                    });
+
+                    if(!existeNode){
+                        grafo.nodes.push({
+                            id: record._fields[0].identity.low,
+                            tipo: record._fields[0].labels[0],
+                            propriedades: {
+                                id: record._fields[0].properties.id.low,
+                                nome: record._fields[0].properties.nome,
+                                tipo: record._fields[0].properties.tipo,
+                                descricao: record._fields[0].properties.descricao,
+                                dataCriacao: record._fields[0].properties.dataCriacao,
+                                nipc: record._fields[0].properties.nipc.low  
+                            }
+                        });   
+                    }
+
+                    if(record._fields[1] && record._fields[2] && record._fields[2].labels[0] != "Comentario"){
+                        record._fields[1].forEach(rel => {
+                            if(rel.type != "VOTA_EM"){
+                                grafo.links.push({
+                                    source: rel.start.low,
+                                    target: rel.end.low,
+                                    type: rel.type,
+                                    propriedades: rel.properties
+                                });      
+                            } 
+                        });  
+                    }
+                })
+            })
+            .catch(error => {
+                console.log(error);
+                res.status(400).send("Algo correu mal com a query.");
+            })
+
+        await session.run("MATCH (e:Evento)-[r*0..1]->(n) RETURN e, r, n")
+            .then(result => {
+                result.records.forEach(record => {
+
+                    var existeNode = false;
+
+                    grafo.nodes.forEach(node => {
+                        if(node.id == record._fields[0].identity.low){
+                            existeNode = true;
+                        }    
+                    });
+
+                    if(!existeNode){
+                        grafo.nodes.push({
+                            id: record._fields[0].identity.low,
+                            tipo: record._fields[0].labels[0],
+                            propriedades: {
+                                id: record._fields[0].properties.id.low,
+                                nome: record._fields[0].properties.nome,
+                                descricao: record._fields[0].properties.descricao,
+                                exclusividade: record._fields[0].properties.exclusividade,
+                                dataInicio: record._fields[0].properties.dataInicio,
+                                dataFim: record._fields[0].properties.dataFim
+                            }
+                        });   
+                    }
+
+                    if(record._fields[1] && record._fields[2] && record._fields[2].labels[0] != "Comentario"){
+                        record._fields[1].forEach(rel => {
+                            if(rel.type != "VOTA_EM"){
+                                grafo.links.push({
+                                    source: rel.start.low,
+                                    target: rel.end.low,
+                                    type: rel.type,
+                                    propriedades: rel.properties
+                                });      
+                            } 
+                        });  
+                    }
+                })
+            })
+            .catch(error => {
+                console.log(error);
+                res.status(400).send("Algo correu mal com a query.");
+            })
+
+        await session.run("MATCH (c:Concurso)-[r*0..1]->(n) RETURN c, r, n")
+            .then(result => {
+                result.records.forEach(record => {
+
+                    var existeNode = false;
+
+                    grafo.nodes.forEach(node => {
+                        if(node.id == record._fields[0].identity.low){
+                            existeNode = true;
+                        }    
+                    });
+
+                    if(!existeNode){
+                        grafo.nodes.push({
+                            id: record._fields[0].identity.low,
+                            tipo: record._fields[0].labels[0],
+                            propriedades: {
+                                id: record._fields[0].properties.id.low,
+                                nome: record._fields[0].properties.nome,
+                                descricao: record._fields[0].properties.descricao,
+                                tipo: record._fields[0].properties.tipo,
+                                dataInicio: record._fields[0].properties.dataInicio,
+                                dataFim: record._fields[0].properties.dataFim
+                            }
+                        });   
+                    }
+
+                    if(record._fields[1] && record._fields[2] && record._fields[2].labels[0] != "Comentario"){
+                        record._fields[1].forEach(rel => {
+                            if(rel.type != "VOTA_EM"){
+                                grafo.links.push({
+                                    source: rel.start.low,
+                                    target: rel.end.low,
+                                    type: rel.type,
+                                    propriedades: rel.properties
+                                });      
+                            } 
+                        });  
+                    }
+                })
+            })
+            .catch(error => {
+                console.log(error);
+                res.status(400).send("Algo correu mal com a query.");
+            })
+
+        await session.run("MATCH (c:Contrato)-[r*0..1]->(n) RETURN c, r, n")
+            .then(result => {
+                result.records.forEach(record => {
+
+                    var existeNode = false;
+
+                    grafo.nodes.forEach(node => {
+                        if(node.id == record._fields[0].identity.low){
+                            existeNode = true;
+                        }    
+                    });
+
+                    if(!existeNode){
+                        grafo.nodes.push({
+                            id: record._fields[0].identity.low,
+                            tipo: record._fields[0].labels[0],
+                            propriedades: {
+                                id: record._fields[0].properties.id.low,
+                                nome: record._fields[0].properties.nome,
+                                descricao: record._fields[0].properties.descricao,
+                                conclusao: record._fields[0].properties.conclusao,
+                                tipo: record._fields[0].properties.tipo,
+                                dataInicio: record._fields[0].properties.dataInicio,
+                                dataFim: record._fields[0].properties.dataFim
+                            }
+                        });   
+                    }
+
+                    if(record._fields[1] && record._fields[2] && record._fields[2].labels[0] != "Comentario"){
+                        record._fields[1].forEach(rel => {
+                            if(rel.type != "VOTA_EM"){
+                                grafo.links.push({
+                                    source: rel.start.low,
+                                    target: rel.end.low,
+                                    type: rel.type,
+                                    propriedades: rel.properties
+                                });      
+                            }  
+                        });  
+                    }
+                })
+            })
+            .catch(error => {
+                console.log(error);
+                res.status(400).send("Algo correu mal com a query.");
+            })
+
+        await session.run("MATCH (re:Registo)-[r*0..1]->(n) RETURN re, r, n")
+            .then(result => {
+                result.records.forEach(record => {
+
+                    var existeNode = false;
+
+                    grafo.nodes.forEach(node => {
+                        if(node.id == record._fields[0].identity.low){
+                            existeNode = true;
+                        }    
+                    });
+
+                    if(!existeNode){
+                        grafo.nodes.push({
+                            id: record._fields[0].identity.low,
+                            tipo: record._fields[0].labels[0],
+                            propriedades: {
+                                id: record._fields[0].properties.id.low,
+                                titulo: record._fields[0].properties.titulo,
+                                descricao: record._fields[0].properties.descricao,
+                                credibilidade: record._fields[0].properties.credibilidade.low  
+                            }
+                        });   
+                    }
+
+                    if(record._fields[1] && record._fields[2] && record._fields[2].labels[0] != "Comentario"){
+                        record._fields[1].forEach(rel => {
+                            if(rel.type != "VOTA_EM"){
+                                grafo.links.push({
+                                    source: rel.start.low,
+                                    target: rel.end.low,
+                                    type: rel.type,
+                                    propriedades: rel.properties
+                                });      
+                            } 
+                        });  
+                    }
+                })
+            })
+            .catch(error => {
+                console.log(error);
+                res.status(400).send("Algo correu mal com a query.");
+            })
+    }
+
+    pesquisa().then(() => {
+        if(!res.writableEnded){
+            res.status(200).send(grafo);
+        }
+    })
+});
+
 //start app
 app.listen(3000, () => console.log("Listening on port 3000..."));
 
@@ -5797,7 +6228,7 @@ function generateTokens(userInfo, res){
 
     var session = driver.session();
 
-    var accessToken = jwt.sign(userInfo, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '10m'});
+    var accessToken = jwt.sign(userInfo, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '15m'});
     var refreshToken = jwt.sign(userInfo, process.env.REFRESH_TOKEN_SECRET);
 
     var trans = session.beginTransaction();

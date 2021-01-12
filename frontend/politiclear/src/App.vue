@@ -1,19 +1,23 @@
 <template>
   <div id="app">
     <div id="nav">
-      <router-link tag="h3" to="/">Home</router-link>
-      <router-link tag="h3" to="/registos">Registos</router-link>
-      <router-link tag="h3" to="/eventos">Eventos</router-link>
-      <router-link tag="h3" to="/concursos">Concursos</router-link>
-      <router-link tag="h3" to="/contratos">Contratos</router-link>
-      <router-link tag="h3" to="/politicos">Políticos</router-link>
-      <router-link tag="h3" to="/empresarios">Empresários</router-link>
-      <router-link tag="h3" to="/organizacoes">Organizações</router-link>
-      <router-link tag="h3" to="/cidadaosCreditados">Cidadãos Creditados</router-link>
-      <router-link v-if="$store.getters.getUser.info.tipo == 'Administrador'" tag="h3" to="/areaAdm/users">Área de Administrador</router-link>
-      <router-link v-if="$store.getters.getUser.info.tipo != '' && $store.getters.getUser.info.tipo != 'Administrador'" tag="h3" :to="{path: '/perfil/' + $store.getters.getUser.info.tipo + '/' + $store.getters.getUser.info.id}">Perfil</router-link>
-      <h3 v-if="!$store.getters.getUser.info.id" @click="toggleLogin">Login</h3>
-      <h3 v-if="$store.getters.getUser.info.id" @click="logout">Logout</h3>
+      <div id="routes">
+        <router-link @mouseover.native="startHoverHeader" @mouseleave.native="finishHoverHeader" tag="h3" to="/">Home</router-link>
+        <router-link @mouseover.native="startHoverHeader" @mouseleave.native="finishHoverHeader" tag="h3" to="/registos">Registos</router-link>
+        <router-link @mouseover.native="startHoverHeader" @mouseleave.native="finishHoverHeader" tag="h3" to="/eventos">Eventos</router-link>
+        <router-link @mouseover.native="startHoverHeader" @mouseleave.native="finishHoverHeader" tag="h3" to="/concursos">Concursos</router-link>
+        <router-link @mouseover.native="startHoverHeader" @mouseleave.native="finishHoverHeader" tag="h3" to="/contratos">Contratos</router-link>
+        <router-link @mouseover.native="startHoverHeader" @mouseleave.native="finishHoverHeader" tag="h3" to="/politicos">Políticos</router-link>
+        <router-link @mouseover.native="startHoverHeader" @mouseleave.native="finishHoverHeader" tag="h3" to="/empresarios">Empresários</router-link>
+        <router-link @mouseover.native="startHoverHeader" @mouseleave.native="finishHoverHeader" tag="h3" to="/organizacoes">Organizações</router-link>
+        <router-link @mouseover.native="startHoverHeader" @mouseleave.native="finishHoverHeader" tag="h3" to="/cidadaosCreditados">Cidadãos Creditados</router-link>
+        <router-link @mouseover.native="startHoverHeader" @mouseleave.native="finishHoverHeader" v-if="$store.getters.getUser.info.tipo == 'Administrador'" tag="h3" to="/areaAdm/users">Área de Administrador</router-link>
+        <div id="logs">
+          <router-link @mouseover.native="startHoverHeader" @mouseleave.native="finishHoverHeader" v-if="$store.getters.getUser.info.tipo != '' && $store.getters.getUser.info.tipo != 'Administrador'" tag="h3" :to="{path: '/perfil/' + $store.getters.getUser.info.tipo + '/' + $store.getters.getUser.info.id}">Perfil</router-link>
+          <h3 class="log" @mouseover="startHoverHeader" @mouseleave="finishHoverHeader" v-if="!$store.getters.getUser.info.id" @click="toggleLogin">Login</h3>
+          <h3 class="log" @mouseover="startHoverHeader" @mouseleave="finishHoverHeader" v-if="$store.getters.getUser.info.id" @click="logout">Logout</h3>
+        </div>
+      </div>
     </div>
     <router-view/>
     <LoginModal v-show="isLoginVisible" v-on:fechar="toggleLogin" v-on:registar="toggleBoth" v-on:erro="showError" v-on:update-user="updateUser"/>
@@ -90,36 +94,244 @@ export default {
     hideError(){
       this.isErrorVisible = false;
       this.msg = "";
+    },
+    startHoverHeader(e){
+      e.srcElement.classList.add("linkHover");
+    },
+    finishHoverHeader(e){
+      e.srcElement.classList.remove("linkHover");
     }
   }
 }
 </script>
 
-<style scoped>
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-}
+<style>
+  #app {
+    font-family: Avenir, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-align: center;
+    color: #2c3e50;
+    background-color: #8CA3B4;
+    height: 755px;
+    width: 101.2%;
+    margin: -10px;
+  }
 
-#nav {
-  padding: 30px;
-}
+  #nav {
+    padding: 30px;
+    background-color: #405B6E;
+    border-radius: 50px;
+  }
 
-#nav a {
-  font-weight: bold;
-  color: #2c3e50;
-}
+  #navAdm {
+    margin: -15px 0px -15px -0px;
+  }
 
-#nav a.router-link-exact-active {
-  color: #42b983;
-}
+  #routes {
+    background-color: white;
+    padding: 20px;
+    border-radius: 150px;
+  }
 
-h3 {
-    display:inline;
+  #routes > h3, #logs > h3 {
+    display: inline;
+    margin-left: 2px;
+    margin-right: 2px;
+    padding: 4px 10px 4px 10px;
+    font-size: 18px;
+    color: black;
+    border-radius: 15px;
+    cursor: pointer;
+  }
+
+  #logs {
+    float: right;
+    margin-right: 40px;
+  }
+
+  .linkHover {
+    background-color: #7291ad;
+  }
+
+  .searchbar {
+    background-color: #B2B8CB;
+    padding: 20px 35px 45px 35px;
+    width: 88%;
+    border-radius: 20px;
+    margin: auto;
+    margin-bottom: 5px;
+  }
+
+  .searchbar > select {
+    height: 25px;
+    width: 300px;
+    font-size: 16px;
+    margin: -2px 20px 0px 5px;
+    float: left;
+    border-radius: 5px;
+    background-color: #DDDDDD;
+  }
+
+  .searchbar > input {
+    height: 18px;
+    width: 300px;
+    font-size: 16px;
+    margin-right: 15px;
+    float: right;
+    border-radius: 5px;
+    background-color: #DDDDDD;
+  }
+
+  .searchbar > label {
+    font-size: 18px;
+    font-weight: 600;
+    float: left;
+    border-radius: 5px;
+  }
+
+  .searchbar > button {
+    height: 25px;
+    font-size: 16px;
+    width: 100px;
+    float: right;
+    background-color: #8B8A96;
+    color: white;
+    border: 2px solid #5A6378;
+    border-radius: 5px;
+  }
+
+  button {
+    height: 25px;
+    font-size: 16px;
+    background-color: #8B8A96;
+    color: white;
+    border: 2px solid #5A6378;
+    border-radius: 5px;
+  }
+
+  .btnCriar {
+    height: 35px;
+    font-size: 18px;
+  }
+
+  .lista {
+    overflow: auto;
+    height: 520px;
+    padding: 0% 10% 0% 10%;
+    margin: auto;
+    margin-top: 5px;
+  }
+
+  .listaComentarios {
+    overflow: auto;
+    width: 70%;
+    height: 360px;
+    margin: 5px 0px 5px 75px;
+    float: right;
+  }
+
+  .listaAdm {
+    height: 460px;
+  }
+
+  .card h4 {
+    text-align: justify;
+    margin: 10px;
+  }
+
+  .card b {
+    font-size: 17px;
+    color: black;
+  }
+
+  .card {
+    margin: 10px 0px 10px 0px;
+    padding: 10px 30px 10px 30px;
+    background-color: #cccccc;
+    border-radius: 20px;
+    cursor: pointer;
+  }
+
+  .card button {
     margin-left: 10px;
     margin-right: 10px;
-}
+  }
+
+  hr {
+    height: 5px;
+    max-width: 100%;
+    background-color: #888888;
+    margin: 20px 40px 20px 40px;
+  }
+
+  .element {
+    display: inline;
+  }
+
+  .info {
+    float: left;
+    padding: 10px 0px 10px 25px;
+    width: 96%;
+    background-color: #9e8a7c;
+    color: black;
+    border-radius: 80px;
+    margin: 10px 0px 10px 20px;
+  }
+
+  .info h2, .info h3 {
+    text-align: center;
+    width: 99%;
+  }
+
+  .info h2 {
+    font-size: 18px;
+  }
+
+  .info h3 {
+    font-size: 16px;
+  }
+
+  .info b {
+    font-size: 18px;
+  }
+
+  .listaInfo {
+    margin: 10px 10px 0px 10px;
+    display: flex;
+    height: 280px;
+  }
+
+  .listaInfo .divWrapper {
+    width: 280px;
+    text-align: justify;
+    margin: 0px 10px 0px 10px;
+    padding: 0px 15px 0px 15px;
+    background-color: #cccccc;
+    border-radius: 20px;
+    overflow: auto;
+  }
+
+  .listaInfo .divWrapper > h3 {
+    color: black;
+  }
+
+  .listaInfo li {
+    text-align: left;
+    margin: 5px 0px 5px 0px;
+    cursor: pointer;
+  }
+
+  .listaInfo .subTopic {
+    margin-left: 15px;
+    font-size: 16px;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  .clicked {
+    transform: scale(0.95);
+  }
 </style>

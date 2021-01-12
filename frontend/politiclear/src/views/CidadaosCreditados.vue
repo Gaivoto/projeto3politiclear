@@ -1,7 +1,7 @@
 <template>
     <div>
-        <CidadaosCreditadosSearch v-on:pesquisar="updateList"/>
-        <ElementList tipo="CidadaoCreditadoCard" v-bind:lista="this.lista"/>
+        <CidadaosCreditadosSearch class="searchbar" v-on:pesquisar="updateList"/>
+        <ElementList class="lista" tipo="CidadaoCreditadoCard" v-bind:lista="this.lista"/>
         <ErrorModal v-show="isErrorVisible" v-bind:msg="this.msg" v-on:fechar="hideError"/>
     </div>
 </template>

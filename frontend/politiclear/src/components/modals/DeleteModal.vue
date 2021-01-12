@@ -1,8 +1,10 @@
 <template>
-    <div>
-        <h3>Este {{ this.msg }} será apagado permanentemente. Tem a certeza que pretende continuar? </h3>
-        <button @click="sim">Sim</button>
-        <button @click="nao">Não</button>
+    <div id="wrapper">
+        <div id="innerDiv">
+            <h3>Este {{ this.msg }} será apagado permanentemente. Tem a certeza que pretende continuar? </h3>
+            <button @click="sim" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Sim</button>
+            <button @click="nao" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Não</button>
+        </div>
     </div>
 </template>
 
@@ -21,7 +23,38 @@ export default {
         },
         nao(){
             this.$emit('nao');
+        },
+        startBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.add("clicked");
+            }
+            
+        },
+        finishBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.remove("clicked");  
+            }
         }
     }
 }
 </script>
+
+<style scoped>
+    #wrapper {
+        position: absolute;
+        top: 0px;
+        left: 0px;
+        width: 100%;
+        height: 100%;
+        background: rgba(60, 60, 60, 0.8);
+    }
+
+    #innerDiv {
+        background-color: white;
+        width: 25%;
+        height: 20%;
+        padding: 50px;
+        margin: auto;
+        margin-top: 10%;
+    }
+</style>

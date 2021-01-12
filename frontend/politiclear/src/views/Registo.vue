@@ -1,10 +1,14 @@
 <template>
     <div>
-        <RegistoInfo v-bind:info="this.info"/>
+        <RegistoInfo class="info" v-bind:info="this.info"/>
+        <button @click="node" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Ver rede de contactos</button>
         <NovoVotoInfo v-if="possivelVotarComentar" v-on:votar="criarVoto" v-bind:votos="this.info.votos"/>
-        <NovoComentarioInfo v-if="possivelVotarComentar" v-on:comentar="criarComentario"/>
-        <ElementList tipo="ComentarioCard" v-bind:lista="this.info.comentarios" v-on:apagar="apagarComentario"/>
-        <RegistoInfoLists v-bind:assuntos="this.info.assuntos"/>
+        <CriarComentarioModal v-if="isCreatingComment" v-on:comentar="criarComentario" v-on:fechar="toggleComentario"/>
+        <button v-if="!isCreatingComment && possivelVotarComentar" @click="toggleComentario" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Criar comentário</button>
+        <div class="inner">
+            <RegistoInfoLists class="listaInfo" v-bind:assuntos="this.info.assuntos"/>   
+            <ElementList tipo="ComentarioCard" class="listaComentarios" v-bind:lista="this.info.comentarios" v-on:apagar="apagarComentario"/> 
+        </div>
         <ErrorModal v-show="isErrorVisible" v-bind:msg="this.msg" v-on:fechar="hideError"/>
     </div>
 </template>
@@ -13,7 +17,7 @@
 import axios from 'axios'
 import RegistoInfo from '@/components/info/RegistoInfo.vue'
 import NovoVotoInfo from '@/components/criar/NovoVotoInfo.vue'
-import NovoComentarioInfo from '@/components/criar/NovoComentarioInfo.vue'
+import CriarComentarioModal from '@/components/modals/CriarComentarioModal.vue'
 import RegistoInfoLists from '@/components/listasPagsId/RegistoInfoLists.vue'
 import ElementList from '@/components/ElementList.vue'
 import ErrorModal from '@/components/modals/ErrorModal.vue'
@@ -23,7 +27,7 @@ export default {
     components: {
         RegistoInfo,
         NovoVotoInfo,
-        NovoComentarioInfo,
+        CriarComentarioModal,
         RegistoInfoLists,
         ElementList,
         ErrorModal
@@ -32,7 +36,8 @@ export default {
         return{
             info: { votos: []},
             msg: "",
-            isErrorVisible: false
+            isErrorVisible: false,
+            isCreatingComment: false
         }
     },
     created(){
@@ -54,6 +59,10 @@ export default {
         }
     },
     methods: {
+        node(){
+            this.$store.commit('setNode', {tipo: "Registo", id: this.info.registo.id});
+            this.$router.push("/grafo");
+        },
         showError(msg){
             this.isErrorVisible = true;
             this.msg = msg;
@@ -96,9 +105,14 @@ export default {
                 } else {
                     this.showError(error.response.data);
                 }
+                if(error.response.status == "403"){
+                    this.$store.commit('setUser', {info: {tipo: ""}, tokens: {}});
+                }
             });
         },
         criarComentario(comentario){
+            this.toggleComentario();
+            
             axios({
                 method: 'post',
                 url: `http://localhost:3000/api/registos/${this.$route.params.id}/comentarios`,
@@ -131,6 +145,9 @@ export default {
                     this.showError(error.response.data.details[0].message);
                 } else {
                     this.showError(error.response.data);
+                }
+                if(error.response.status == "403"){
+                    this.$store.commit('setUser', {info: {tipo: ""}, tokens: {}});
                 }
             });
         },
@@ -165,12 +182,31 @@ export default {
                 } else {
                     this.showError(error.response.data);
                 }
+                if(error.response.status == "403"){
+                    this.$store.commit('setUser', {info: {tipo: ""}, tokens: {}});
+                }
             })
+        },
+        toggleComentario(){
+            this.isCreatingComment = !this.isCreatingComment;
+        },
+        startBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.add("clicked");
+            }
+            
+        },
+        finishBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.remove("clicked");  
+            }
         }
     }
 }
 </script>
 
 <style scoped>
-
+    .inner {
+        display: flex;
+    }
 </style>

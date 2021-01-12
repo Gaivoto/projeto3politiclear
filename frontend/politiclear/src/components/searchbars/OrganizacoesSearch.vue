@@ -1,7 +1,7 @@
 <template>
-    <div>
+    <div class="searchbarWrapper">
+        <button id="pesquisar" v-on:click="pesquisar" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Pesquisar</button>
         <input type="text" id="nome" v-model="texto" autocomplete="off">
-        <button id="pesquisar" v-on:click="pesquisar">Pesquisar</button>
     </div>
 </template>
 
@@ -20,6 +20,17 @@ export default {
             }
 
             this.$emit('pesquisar', pesquisa); 
+        },
+        startBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.add("clicked");
+            }
+            
+        },
+        finishBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.remove("clicked");  
+            }
         }
     }
 }

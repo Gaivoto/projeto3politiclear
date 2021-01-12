@@ -1,9 +1,9 @@
 <template>
     <div>
-        <ContratosSearch v-on:pesquisar="updateList"/>
-        <ElementList tipo="ContratoCard" v-bind:lista="this.lista"/>
-        <router-link v-if="possivelCriar" tag="button" to="/contratos/create">Criar novo contrato</router-link>
+        <ContratosSearch class="searchbar" v-on:pesquisar="updateList"/>
+        <router-link class="btnCriar" v-if="possivelCriar" tag="button" @mousedown.native="startBtnClick" @mouseup.native="finishBtnClick" @mouseleave.native="finishBtnClick" to="/contratos/create">Criar novo contrato</router-link>
         <router-view></router-view>
+        <ElementList class="lista" tipo="ContratoCard" v-bind:lista="this.lista"/>
         <ErrorModal v-show="isErrorVisible" v-bind:msg="this.msg" v-on:fechar="hideError"/>
     </div>
 </template>
@@ -95,6 +95,17 @@ export default {
         hideError(){
             this.isErrorVisible = false;
             this.msg = "";
+        },
+        startBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.add("clicked");
+            }
+            
+        },
+        finishBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.remove("clicked");  
+            }
         }
     }
 }

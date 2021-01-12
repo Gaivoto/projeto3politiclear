@@ -1,10 +1,10 @@
 <template>
     <div>
         <router-link :to="{path: '/registos/' + this.info.id}" tag="div">
-            <h4>Título: {{ this.info.titulo }}</h4>
-            <h4>Autor: {{ this.info.autor }}</h4>
-            <h4>Data de criação: {{ this.info.data.day.low + "/" + this.info.data.month.low + "/" + this.info.data.year.low }}</h4>
-            <h4>Credibilidade: {{ this.info.credibilidade }}</h4>
+            <h4><b>Título:</b> {{ this.info.titulo }}</h4>
+            <h4><b>Autor:</b> {{ this.info.autor }}</h4>
+            <h4><b>Data de criação:</b> {{ this.info.data.day.low + "/" + this.info.data.month.low + "/" + this.info.data.year.low }}</h4>
+            <h4><b>Credibilidade:</b> {{ this.info.credibilidade }}</h4>
         </router-link>
         <router-view/>
     </div>
@@ -23,7 +23,4 @@ export default {
 </script>
 
 <style scoped>
-div {
-    border: 1px solid black;
-}
 </style>

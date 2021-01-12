@@ -1,12 +1,12 @@
 <template>
     <div>
         <router-link :to="{path: '/contratos/' + this.info.id}" tag="div">
-            <h4>Nome: {{ this.info.nome }}</h4>
-            <h4>Tipo: {{ this.info.tipo }}</h4>
-            <h4>Data de início: {{ this.info.dataInicio.day.low + "/" + this.info.dataInicio.month.low + "/" + this.info.dataInicio.year.low }}</h4>
-            <h4>Data de fim: {{ this.info.dataFim.day.low + "/" + this.info.dataFim.month.low + "/" + this.info.dataFim.year.low }}</h4>
-            <h4>Descrição: {{ this.info.descricao }}</h4>
-            <h4>Conclusão: {{ this.info.conclusao }}</h4>
+            <h4><b>Nome:</b> {{ this.info.nome }}</h4>
+            <h4><b>Tipo:</b> {{ this.info.tipo }}</h4>
+            <h4><b>Data de início:</b> {{ this.info.dataInicio.day.low + "/" + this.info.dataInicio.month.low + "/" + this.info.dataInicio.year.low }}</h4>
+            <h4><b>Data de fim:</b> {{ this.info.dataFim.day.low + "/" + this.info.dataFim.month.low + "/" + this.info.dataFim.year.low }}</h4>
+            <h4><b>Descrição:</b> {{ this.info.descricao }}</h4>
+            <h4><b>Conclusão:</b> {{ this.info.conclusao }}</h4>
         </router-link>
         <router-view/>
     </div>
@@ -25,7 +25,4 @@ export default {
 </script>
 
 <style scoped>
-div {
-    border: 1px solid black;
-}
 </style>

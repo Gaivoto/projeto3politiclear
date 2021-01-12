@@ -1,30 +1,36 @@
 <template>
     <div>
-        <label>Participantes:</label>
-        <ul id="participantes">
-            <div v-for="par in info.participantes" v-bind:key="par.key">
-                <router-link v-if="isOutro(par)" tag="li" :to="{path: '/' + par.tipo + 's/' + par.id}">{{ par.tipo + " - " + par.nome }}</router-link>
-                <router-link v-if="isCidadaoCreditado(par)" tag="li" :to="{path: '/CidadaosCreditados/' + par.id}">{{ "Cidadao Creditado - " + par.nome }}</router-link>
-                <router-link v-if="isCidadaoRegistado(par)" tag="li" :to="{path: '/CidadaosRegistados/' + par.id}">{{ "Cidadao Registado - " + par.nome }}</router-link>
-                <router-link v-if="isOrganizacao(par)" tag="li" :to="{path: '/Organizacoes/' + par.id}">{{ "Organização - " + par.nome }}</router-link>
+        <div class="divWrapper">
+            <h3>Participantes:</h3>
+            <ul>
+                <div v-for="par in info.participantes" v-bind:key="par.key">
+                    <router-link v-if="isOutro(par)" tag="li" :to="{path: '/' + par.tipo + 's/' + par.id}">{{ par.tipo + " - " + par.nome }}</router-link>
+                    <router-link v-if="isCidadaoCreditado(par)" tag="li" :to="{path: '/CidadaosCreditados/' + par.id}">{{ "Cidadao Creditado - " + par.nome }}</router-link>
+                    <router-link v-if="isCidadaoRegistado(par)" tag="li" :to="{path: '/CidadaosRegistados/' + par.id}">{{ "Cidadao Registado - " + par.nome }}</router-link>
+                    <router-link v-if="isOrganizacao(par)" tag="li" :to="{path: '/Organizacoes/' + par.id}">{{ "Organização - " + par.nome }}</router-link>
+                    <router-view/>
+                </div>
+            </ul>
+        </div>
+        <div class="divWrapper">
+            <h3>Vencedores:</h3>
+            <ul>
+                <div v-for="ven in info.vencedores" v-bind:key="ven.key">
+                    <router-link v-if="isOutro(ven)" tag="li" :to="{path: '/' + ven.tipo + 's/' + ven.id}">{{ ven.tipo + " - " + ven.nome }}</router-link>
+                    <router-link v-if="isCidadaoCreditado(ven)" tag="li" :to="{path: '/CidadaosCreditados/' + ven.id}">{{ "Cidadao Creditado - " + ven.nome }}</router-link>
+                    <router-link v-if="isCidadaoRegistado(ven)" tag="li" :to="{path: '/CidadaosRegistados/' + ven.id}">{{ "Cidadao Registado - " + ven.nome }}</router-link>
+                    <router-link v-if="isOrganizacao(ven)" tag="li" :to="{path: '/Organizacoes/' + ven.id}">{{ "Organização - " + ven.nome }}</router-link>
+                    <router-view/>
+                </div>
+            </ul>       
+        </div>
+        <div class="divWrapper">
+            <h3>Contratos gerados:</h3>
+            <ul>
+                <router-link tag="li" v-for="con in info.contratos" v-bind:key="con.key" :to="{path: '/contratos/' + con.id}">{{ con.nome }}</router-link>
                 <router-view/>
-            </div>
-        </ul>
-        <label>Vencedores:</label>
-        <ul id="vencedores">
-            <div v-for="ven in info.vencedores" v-bind:key="ven.key">
-                <router-link v-if="isOutro(ven)" tag="li" :to="{path: '/' + ven.tipo + 's/' + ven.id}">{{ ven.tipo + " - " + ven.nome }}</router-link>
-                <router-link v-if="isCidadaoCreditado(ven)" tag="li" :to="{path: '/CidadaosCreditados/' + ven.id}">{{ "Cidadao Creditado - " + ven.nome }}</router-link>
-                <router-link v-if="isCidadaoRegistado(ven)" tag="li" :to="{path: '/CidadaosRegistados/' + ven.id}">{{ "Cidadao Registado - " + ven.nome }}</router-link>
-                <router-link v-if="isOrganizacao(ven)" tag="li" :to="{path: '/Organizacoes/' + ven.id}">{{ "Organização - " + ven.nome }}</router-link>
-                <router-view/>
-            </div>
-        </ul>
-        <label>Contratos gerados:</label>
-        <ul id="contratos">
-            <router-link tag="li" v-for="con in info.contratos" v-bind:key="con.key" :to="{path: '/contratos/' + con.id}">{{ con.nome }}</router-link>
-            <router-view/>
-        </ul>
+            </ul>       
+        </div>
     </div>
 </template>
 
@@ -70,8 +76,4 @@ export default {
 </script>
 
 <style scoped>
-ul, label{
-    float:left;
-    text-align: left;
-}
 </style>

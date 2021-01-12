@@ -1,7 +1,7 @@
 <template>
     <div>
-        <PoliticosSearch v-bind:partidos="this.partidos" v-on:pesquisar="updateList"/>
-        <ElementList tipo="PoliticoCard" v-bind:lista="this.lista"/>
+        <PoliticosSearch class="searchbar" v-bind:partidos="this.partidos" v-on:pesquisar="updateList"/>
+        <ElementList class="lista" tipo="PoliticoCard" v-bind:lista="this.lista"/>
         <ErrorModal v-show="isErrorVisible" v-bind:msg="this.msg" v-on:fechar="hideError"/>
     </div>
 </template>

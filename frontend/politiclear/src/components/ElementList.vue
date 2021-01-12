@@ -1,7 +1,8 @@
 <template>
     <div>
         <div v-for="el in this.lista" v-bind:key="el.id">
-            <component v-bind:is="tipo" v-bind:info="el" v-on:apagar="apagarComentario" v-on:alterar-org="alterarOrg" v-on:alterar-user="alterarUser" v-on:desativar-user="desativarUser"></component>
+            <component class="card" v-bind:is="tipo" v-bind:info="el" v-on:apagar="apagarComentario" v-on:alterar-org="alterarOrg" v-on:alterar-user="alterarUser" v-on:desativar-user="desativarUser"></component>
+            <hr>
         </div>
     </div>
 </template>

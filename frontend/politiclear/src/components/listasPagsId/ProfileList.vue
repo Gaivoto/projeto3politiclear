@@ -1,101 +1,79 @@
 <template>
     <div>
-        <div v-if="profile.registos">
-            <label>Registos:</label>
-            <ul id="registos">
-                <li v-if="showRegistosCriados">
-                    Criados:
-                    <ul>
-                        <router-link tag="li" v-for="reg in profile.registos.criados" v-bind:key="reg.id" :to="{path: '/registos/' + reg.id}">{{ reg.titulo }}</router-link>
-                        <router-view/>
-                    </ul>
-                </li>
-                <li>
-                    Votados:
-                    <ul>
-                        <router-link tag="li" v-for="reg in profile.registos.votados" v-bind:key="reg.id" :to="{path: '/registos/' + reg.id}">{{ reg.titulo }}</router-link>
-                        <router-view/>
-                    </ul>
-                </li>
-                <li>
-                    Acerca de:
-                    <ul>
-                        <router-link tag="li" v-for="reg in profile.registos.acerca" v-bind:key="reg.id" :to="{path: '/registos/' + reg.id}">{{ reg.titulo }}</router-link>
-                        <router-view/>
-                    </ul>
-                </li>
-            </ul>    
+        <div class="divWrapper">
+            <h3>Registos:</h3>
+            <div v-if="profile.registos">
+                <h3 class="subTopic" v-if="showRegistosCriados">Criados:</h3>
+                <ul v-if="showRegistosCriados">
+                    <router-link tag="li" v-for="reg in profile.registos.criados" v-bind:key="reg.id" :to="{path: '/registos/' + reg.id}">{{ reg.titulo }}</router-link>
+                    <router-view/>
+                </ul>
+                <h3 class="subTopic">Votados:</h3>
+                <ul>
+                    <router-link tag="li" v-for="reg in profile.registos.votados" v-bind:key="reg.id" :to="{path: '/registos/' + reg.id}">{{ reg.titulo }}</router-link>
+                    <router-view/>
+                </ul>
+                <h3 class="subTopic">Acerca de:</h3>
+                <ul>
+                    <router-link tag="li" v-for="reg in profile.registos.acerca" v-bind:key="reg.id" :to="{path: '/registos/' + reg.id}">{{ reg.titulo }}</router-link>
+                    <router-view/>
+                </ul>
+            </div>
         </div>
-        <div v-if="profile.organizacoes && showOrganizacoes">
-            <label>Organizações:</label>
-            <ul id="organizacoes">
-                <router-link tag="li" v-for="org in profile.organizacoes" v-bind:key="org.id" :to="{path: '/organizacoes/' + org.id}">{{ org.nome }}</router-link>
-                <router-view/>
-            </ul>    
+        <div class="divWrapper">
+            <div v-if="profile.organizacoes && showOrganizacoes">
+                <h3>Organizações:</h3>
+                <ul>
+                    <router-link tag="li" v-for="org in profile.organizacoes" v-bind:key="org.id" :to="{path: '/organizacoes/' + org.id}">{{ org.nome }}</router-link>
+                    <router-view/>
+                </ul>  
+            </div>
+        
         </div>
-        <div v-if="profile.associados">
-            <label>Associados:</label>
-            <ul id="associados">
-                <router-link tag="li" v-for="ass in profile.associados" v-bind:key="ass.id" :to="{path: '/' + ass.tipo + 's/' + ass.id}">{{ ass.nome }}</router-link>
-                <router-view/>
-            </ul>    
+        <div class="divWrapper">
+            <h3>Concursos:</h3>
+            <div v-if="profile.concursos">
+                <h3 class="subTopic" v-if="showOutros">Organizados:</h3>
+                <ul v-if="showOutros">
+                    <router-link tag="li" v-for="con in profile.concursos.organizados" v-bind:key="con.id" :to="{path: '/concursos/' + con.id}">{{ con.nome }}</router-link>
+                    <router-view/>
+                </ul>
+                <h3 class="subTopic">Participados:</h3>
+                <ul>
+                    <router-link tag="li" v-for="con in profile.concursos.participados" v-bind:key="con.id" :to="{path: '/concursos/' + con.id}">{{ con.nome }}</router-link>
+                    <router-view/>
+                </ul>
+            </div>
         </div>
-        <div v-if="profile.concursos">
-            <label>Concursos:</label>
-            <ul id="concursos">
-                <li v-if="showOutros">
-                    Organizados:
-                    <ul>
-                        <router-link tag="li" v-for="con in profile.concursos.organizados" v-bind:key="con.id" :to="{path: '/concursos/' + con.id}">{{ con.nome }}</router-link>
-                        <router-view/>
-                    </ul>
-                </li>
-                <li>
-                    Participados:
-                    <ul>
-                        <router-link tag="li" v-for="con in profile.concursos.participados" v-bind:key="con.id" :to="{path: '/concursos/' + con.id}">{{ con.nome }}</router-link>
-                        <router-view/>
-                    </ul>
-                </li>
-            </ul>    
+        <div class="divWrapper">
+            <h3>Contratos:</h3>
+            <div v-if="profile.contratos">
+                <h3 class="subTopic" v-if="showOutros">Propostos:</h3>
+                <ul v-if="showOutros">
+                    <router-link tag="li" v-for="con in profile.contratos.propostos" v-bind:key="con.id" :to="{path: '/contratos/' + con.id}">{{ con.nome }}</router-link>
+                    <router-view/>
+                </ul>
+                <h3 class="subTopic">Assinados:</h3>
+                <ul>
+                    <router-link tag="li" v-for="con in profile.contratos.assinados" v-bind:key="con.id" :to="{path: '/contratos/' + con.id}">{{ con.nome }}</router-link>
+                    <router-view/>
+                </ul>    
+            </div>
         </div>
-        <div v-if="profile.contratos">
-            <label>Contratos:</label>
-            <ul id="contratos">
-                <li v-if="showOutros">
-                    Propostos:
-                    <ul>
-                        <router-link tag="li" v-for="con in profile.contratos.propostos" v-bind:key="con.id" :to="{path: '/contratos/' + con.id}">{{ con.nome }}</router-link>
-                        <router-view/>
-                    </ul>
-                </li>
-                <li>
-                    Assinados:
-                    <ul>
-                        <router-link tag="li" v-for="con in profile.contratos.assinados" v-bind:key="con.id" :to="{path: '/contratos/' + con.id}">{{ con.nome }}</router-link>
-                        <router-view/>
-                    </ul>
-                </li>
-            </ul>    
-        </div>
-        <div v-if="profile.eventos">
-            <label>Eventos:</label>
-            <ul id="eventos">
-                <li v-if="showOutros">
-                    Organizados:
-                    <ul>
-                        <router-link tag="li" v-for="eve in profile.eventos.organizados" v-bind:key="eve.id" :to="{path: '/eventos/' + eve.id}">{{ eve.nome }}</router-link>
-                        <router-view/>
-                    </ul>
-                </li>
-                <li>
-                    Participados:
-                    <ul>
-                        <router-link tag="li" v-for="eve in profile.eventos.participados" v-bind:key="eve.id" :to="{path: '/eventos/' + eve.id}">{{ eve.nome }}</router-link>
-                        <router-view/>
-                    </ul>
-                </li>
-            </ul>    
+        <div class="divWrapper">
+            <h3>Eventos:</h3>
+            <div v-if="profile.eventos">
+                <h3 class="subTopic" v-if="showOutros">Organizados:</h3>
+                <ul v-if="showOutros">
+                    <router-link tag="li" v-for="eve in profile.eventos.organizados" v-bind:key="eve.id" :to="{path: '/eventos/' + eve.id}">{{ eve.nome }}</router-link>
+                    <router-view/>
+                </ul>
+                <h3 class="subTopic">Participados:</h3>
+                <ul>
+                    <router-link tag="li" v-for="eve in profile.eventos.participados" v-bind:key="eve.id" :to="{path: '/eventos/' + eve.id}">{{ eve.nome }}</router-link>
+                    <router-view/>
+                </ul>    
+            </div>
         </div>
     </div>
 </template>
@@ -124,8 +102,4 @@ export default {
 </script>
 
 <style scoped>
-ul, label{
-    float:left;
-    text-align: left;
-}
 </style>

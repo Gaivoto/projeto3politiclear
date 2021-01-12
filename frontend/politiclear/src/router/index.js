@@ -144,6 +144,11 @@ const routes = [
     path: '/areaAdm/orgs',
     name: 'AreaAdmOrgs',
     component: () => import('../views/AreaAdmOrgs.vue')
+  },
+  {
+    path: '/grafo',
+    name: 'Grafo',
+    component: () => import('../views/Grafo.vue')
   }
 ]
 

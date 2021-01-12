@@ -5,11 +5,11 @@
             <router-link tag="h3" to="/areaAdm/orgs">Organizações</router-link>
             <router-view></router-view>
         </div>
-        <OrganizacoesSearch v-on:pesquisar="updateList"/>
-        <ElementList tipo="OrganizacaoCard" v-bind:lista="this.lista" v-on:alterar-org="iniciarAlterar"/>
+        <OrganizacoesSearch class="searchbar" v-on:pesquisar="updateList"/>
+        <button class="btnCriar" @click="toggleCriar" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Criar nova organização</button>
+        <ElementList class="lista listaAdm" tipo="OrganizacaoCard" v-bind:lista="this.lista" v-on:alterar-org="iniciarAlterar"/>
         <CriarOrgModal v-show="isCriarVisible" v-on:criar="criarOrganizacao" v-on:cancelar="toggleCriar"/>
         <AlterarOrgModal v-show="isAlterarVisible" v-bind:org="org" v-on:alterar="alterarOrganizacao" v-on:error="showError" v-on:cancelar="toggleAlterar"/>
-        <button @click="toggleCriar">Criar nova organização</button>
         <ErrorModal v-show="isErrorVisible" v-bind:msg="this.msg" v-on:fechar="hideError"/>
     </div>
 </template>
@@ -97,6 +97,9 @@ export default {
                 } else {
                     this.showError(error.response.data);
                 }
+                if(error.response.status == "403"){
+                    this.$store.commit('setUser', {info: {tipo: ""}, tokens: {}});
+                }
             });
         },
         iniciarAlterar(id){
@@ -156,6 +159,9 @@ export default {
                 } else {
                     this.showError(error.response.data);
                 }
+                if(error.response.status == "403"){
+                    this.$store.commit('setUser', {info: {tipo: ""}, tokens: {}});
+                }
             });
         },
         updateList(pesquisa){
@@ -194,6 +200,17 @@ export default {
         hideError(){
             this.isErrorVisible = false;
             this.msg = "";
+        },
+        startBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.add("clicked");
+            }
+            
+        },
+        finishBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.remove("clicked");  
+            }
         }
     }
 }

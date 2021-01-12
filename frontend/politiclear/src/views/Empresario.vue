@@ -1,7 +1,8 @@
 <template>
     <div>
-        <EmpresarioInfo v-bind:info="this.profile"/>
-        <EmpresarioInfoLists v-bind:info="this.profile"/>
+        <EmpresarioInfo class="info" v-bind:info="this.profile"/>
+        <button @click="node" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Ver rede de contactos</button>
+        <EmpresarioInfoLists class="listaInfo" v-bind:info="this.profile"/>
         <ErrorModal v-show="isErrorVisible" v-bind:msg="this.msg" v-on:fechar="hideError"/>
     </div>
 </template>
@@ -40,6 +41,10 @@ export default {
             });
     },
     methods: {
+        node(){
+            this.$store.commit('setNode', {tipo: "Empresario", id: this.profile.empresario.id});
+            this.$router.push("/grafo");
+        },
         showError(msg){
             this.isErrorVisible = true;
             this.msg = msg;
@@ -47,6 +52,17 @@ export default {
         hideError(){
             this.isErrorVisible = false;
             this.msg = "";
+        },
+        startBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.add("clicked");
+            }
+            
+        },
+        finishBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.remove("clicked");  
+            }
         }
     }
 }

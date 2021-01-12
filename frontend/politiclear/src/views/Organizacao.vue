@@ -1,9 +1,10 @@
 <template>
     <div>
-        <OrganizacaoInfo v-bind:info="this.profile"/>
-        <button v-if="possivelAssociar" @click="toggleAssociar">Associar-me a esta organização</button>
-        <button v-if="possivelDesassociar" @click="toggleAssociar">Desassociar-me desta organização</button>
-        <OrganizacaoInfoLists v-bind:info="this.profile"/>
+        <OrganizacaoInfo class="info" v-bind:info="this.profile"/>
+        <button @click="node" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Ver rede de contactos</button>
+        <button v-if="possivelAssociar" @click="toggleAssociar" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Associar-me a esta organização</button>
+        <button v-if="possivelDesassociar" @click="toggleAssociar" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Desassociar-me desta organização</button>
+        <OrganizacaoInfoLists class="listaInfo" v-bind:info="this.profile"/>
         <ErrorModal v-show="isErrorVisible" v-bind:msg="this.msg" v-on:fechar="hideError"/>
     </div>
 </template>
@@ -72,6 +73,10 @@ export default {
         }
     },
     methods: {
+        node(){
+            this.$store.commit('setNode', {tipo: "Organizacao", id: this.profile.organizacao.id});
+            this.$router.push("/grafo");
+        },
         showError(msg){
             this.isErrorVisible = true;
             this.msg = msg;
@@ -113,7 +118,21 @@ export default {
                 } else {
                     this.showError(error.response.data);
                 }
+                if(error.response.status == "403"){
+                    this.$store.commit('setUser', {info: {tipo: ""}, tokens: {}});
+                }
             });
+        },
+        startBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.add("clicked");
+            }
+            
+        },
+        finishBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.remove("clicked");  
+            }
         }
     }
 }

@@ -13,11 +13,18 @@ export default new Vuex.Store({
       tokens: {
         
       }
+    },
+    node:{
+      tipo: "",
+      id: 0
     }
   },
   getters: {
     getUser(state){
       return state.user;
+    },
+    getNode(state){
+      return state.node;
     }
   },
   mutations: {
@@ -26,6 +33,9 @@ export default new Vuex.Store({
     },
     setToken(state, token){
       state.user.tokens.accessToken = token;
+    },
+    setNode(state, node){
+      state.node = node;
     }
   },
   actions: {

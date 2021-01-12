@@ -90,6 +90,9 @@ export default {
             } else {
                 this.showError(error.response.data);
             }
+            if(error.response.status == "403"){
+                this.$store.commit('setUser', {info: {tipo: ""}, tokens: {}});
+            }
         });
 
         axios({
@@ -108,6 +111,9 @@ export default {
                 this.showError(error.response.data.details[0].message);
             } else {
                 this.showError(error.response.data);
+            }
+            if(error.response.status == "403"){
+                this.$store.commit('setUser', {info: {tipo: ""}, tokens: {}});
             }
         });
     },
@@ -133,6 +139,9 @@ export default {
                     this.showError(error.response.data.details[0].message);
                 } else {
                     this.showError(error.response.data);
+                }
+                if(error.response.status == "403"){
+                    this.$store.commit('setUser', {info: {tipo: ""}, tokens: {}});
                 }
             });     
         },

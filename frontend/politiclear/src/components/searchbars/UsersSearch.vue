@@ -1,5 +1,5 @@
 <template>
-    <div>
+    <div class="searchbarWrapper">
         <label for="tipo">Tipo de utilizador:</label>
         <select name="tipo" id="tipo" v-model="tipoPesquisa">
             <option value="">Todos</option>
@@ -9,8 +9,8 @@
             <option value="CidadaosRegistados">Cidadãos Registados</option>
             <option value="CidadaosCreditados">Cidadãos Creditados</option>
         </select>
+        <button id="pesquisar" v-on:click="pesquisar" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Pesquisar</button>
         <input type="text" id="nome" v-model="texto" autocomplete="off">
-        <button id="pesquisar" v-on:click="pesquisar">Pesquisar</button>
     </div>
 </template>
 
@@ -49,6 +49,17 @@ export default {
             }
 
             this.$emit('pesquisar', pesquisa); 
+        },
+        startBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.add("clicked");
+            }
+            
+        },
+        finishBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.remove("clicked");  
+            }
         }
     }
 }

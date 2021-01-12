@@ -1,10 +1,11 @@
 <template>
-    <div>
-        <ContratoInfo v-bind:info="this.info"/>
-        <router-link tag="button" v-if="possivelAlterar" :to="{path: '/contratos/'+ this.$route.params.id + '/edit'}">Alterar este contrato</router-link>
+    <div class="element">
+        <ContratoInfo class="info" v-bind:info="this.info"/>
+        <button @click="node" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Ver rede de contactos</button>
+        <router-link tag="button" v-if="possivelAlterar" @mousedown.native="startBtnClick" @mouseup.native="finishBtnClick" @mouseleave.native="finishBtnClick" :to="{path: '/contratos/'+ this.$route.params.id + '/edit'}">Alterar este contrato</router-link>
         <router-view></router-view>
-        <button v-if="possivelEliminar" @click="toggleDeleteModal">Eliminar este contrato</button>
-        <ContratoInfoLists v-bind:info="this.info"/>
+        <button v-if="possivelEliminar" @click="toggleDeleteModal" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Eliminar este contrato</button>
+        <ContratoInfoLists class="listaInfo" v-bind:info="this.info"/>
         <DeleteModal v-show="isDeleteVisible" msg="contrato" v-on:sim="apagarContrato" v-on:nao="toggleDeleteModal"/>
         <ErrorModal v-show="isErrorVisible" v-bind:msg="this.msg" v-on:fechar="hideError"/>
     </div>
@@ -62,6 +63,10 @@ export default {
         }
     },
     methods: {
+        node(){
+            this.$store.commit('setNode', {tipo: "Contrato", id: this.info.contrato.id});
+            this.$router.push("/grafo");
+        },
         showError(msg){
             this.isErrorVisible = true;
             this.msg = msg;
@@ -89,15 +94,31 @@ export default {
                 } else {
                     this.showError(error.response.data);
                 };
+                if(error.response.status == "403"){
+                    this.$store.commit('setUser', {info: {tipo: ""}, tokens: {}});
+                }
             })
         },
         toggleDeleteModal(){
             this.isDeleteVisible = !this.isDeleteVisible;
+        },
+        startBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.add("clicked");
+            }
+            
+        },
+        finishBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.remove("clicked");  
+            }
         }
     }
 }
 </script>
 
 <style scoped>
-
+    button {
+        margin: 0px 10px 0px 10px;
+    }
 </style>

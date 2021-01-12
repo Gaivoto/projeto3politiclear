@@ -1,71 +1,83 @@
 <template>
-    <div>
-        <label for="criar">Criar concurso como:</label>
-        <input type="radio" value="user" name="criar" v-model="criar"> {{ this.$store.getters.getUser.info.nome }}
-        <input type="radio" value="org" name="criar" v-model="criar"> Uma organização a que pertença
-        <div v-show="isOrganizacaoVisible">
-            <label for="organizacao">Escolha a organização com a qual pretende criar o concurso:</label>
-            <select name="organizacao" v-model="organizacao">
-                <option v-for="org in organizacoes" v-bind:key="org.id" :value="org.id">{{ org.nome }}</option>
-            </select>
-        </div><br>
-        <label for="nome">Nome:</label>
-        <input type="text" name="titulo" v-model="nome" autocomplete="off"><br>
-        <label for="tipo">Tipo:</label>
-        <select name="tipo" v-model="tipo">
-            <option value="Construcao">Construção</option>
-            <option value="Outro">Outro</option>
-        </select><br>
-        <label for="dataInicio">Data de início:</label>
-        <input type="date" name="dataInicio" v-model="dataInicio"><br>
-        <label for="dataFim">Data de fim:</label>
-        <input type="date" name="dataFim" v-model="dataFim"><br>
-        <label for="descricao">Descrição:</label><br>
-        <textarea name="descricao" cols="50" rows="20" v-model="descricao"></textarea><br>
-        <div>
-            <label for="tipoPar">Tipo de participante: </label>
-            <select name="tipoPar" v-model="tipoPesquisaPar">
-                <option value="">Todos</option>
-                <option value="Politico">Político</option>
-                <option value="Empresario">Empresário</option>
-                <option value="Organizacao">Organização</option>
-                <option value="CidadaoRegistado">Cidadão Registado</option>
-            </select>
-            <label for="pesquisaPar">Pesquisa: </label>
-            <input type="text" name="pesquisaPar" v-model="textoPesquisaPar" autocomplete="off">
-            <div v-for="par in participantesPorAdicionar" v-bind:key="par.key">
-                <h3 v-if="displayP(par)">{{par.tipoParticipante + " - " + par.participante.nome}}<button @click="adicionarParticipante(par)">Adicionar</button></h3>
+    <div class="outer">
+        <div class="wrapperInfo">
+            <label for="criar">Criar concurso como:</label>
+            <input class="radioInput" type="radio" value="user" name="criar" v-model="criar"> {{ this.$store.getters.getUser.info.nome }}
+            <input class="radioInput" type="radio" value="org" name="criar" v-model="criar"> Uma organização a que pertença
+            <div v-show="isOrganizacaoVisible">
+                <label for="organizacao">Organização:</label>
+                <select name="organizacao" v-model="organizacao">
+                    <option v-for="org in organizacoes" v-bind:key="org.id" :value="org.id">{{ org.nome }}</option>
+                </select>
+            </div><br>
+            <label for="nome">Nome:</label>
+            <input class="normalInput" type="text" name="titulo" v-model="nome" autocomplete="off"><br>
+            <label for="tipo">Tipo:</label>
+            <select name="tipo" v-model="tipo">
+                <option value="Construcao">Construção</option>
+                <option value="Outro">Outro</option>
+            </select><br>
+            <label for="dataInicio">Data de início:</label>
+            <input class="normalInput" type="date" name="dataInicio" v-model="dataInicio"><br>
+            <label for="dataFim">Data de fim:</label>
+            <input class="normalInput" type="date" name="dataFim" v-model="dataFim"><br>
+            <label for="descricao">Descrição:</label><br>
+            <textarea name="descricao" cols="50" rows="20" v-model="descricao"></textarea><br>    
+        </div>
+        <div class="wrapperTabelas">
+            <div class="divSearchbar">
+                <label for="tipoPar">Tipo de participante: </label>
+                <select name="tipoPar" v-model="tipoPesquisaPar" style="margin-right: 440px;">
+                    <option value="">Todos</option>
+                    <option value="Politico">Político</option>
+                    <option value="Empresario">Empresário</option>
+                    <option value="Organizacao">Organização</option>
+                    <option value="CidadaoRegistado">Cidadão Registado</option>
+                </select>
+                <label for="pesquisaPar">Pesquisa: </label>
+                <input type="text" name="pesquisaPar" v-model="textoPesquisaPar" autocomplete="off">
+            </div>
+            <h3>Participantes por adicionar:</h3>
+            <h3>Participantes adicionados:</h3>
+            <div class="divTable">
+                <ul>
+                    <li v-for="par in participantesPorAdicionar" v-bind:key="par.key" v-show="displayP(par)"><p>{{par.tipoParticipante + " - " + par.participante.nome}}</p><button class="btnLista" @click="adicionarParticipante(par)" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Adicionar</button></li>
+                </ul>
+            </div>
+            <div class="divTable">
+                <ul>
+                    <li v-for="par in participantesAdicionados" v-bind:key="par.key" v-show="displayP(par)"><p>{{par.tipoParticipante + " - " + par.participante.nome}}</p><button class="btnLista" @click="removerParticipante(par)" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Remover</button></li>
+                </ul>
             </div>
         </div>
-        <div>
-            <h2>Participantes adicionados:</h2>
-            <div v-for="par in participantesAdicionados" v-bind:key="par.key">
-                <h3>{{par.tipoParticipante + " - " + par.participante.nome}}<button @click="removerParticipante(par)">Remover</button></h3>
+        <div class="wrapperTabelas">
+            <div class="divSearchbar">
+                <label for="tipoVen">Tipo de vencedor: </label>
+                <select name="tipoVen" v-model="tipoPesquisaVen" style="margin-right: 440px;">
+                    <option value="">Todos</option>
+                    <option value="Politico">Político</option>
+                    <option value="Empresario">Empresário</option>
+                    <option value="Organizacao">Organização</option>
+                    <option value="CidadaoRegistado">Cidadão Registado</option>
+                </select>
+                <label for="pesquisaVen">Pesquisa: </label>
+                <input type="text" name="pesquisaVen" v-model="textoPesquisaVen" autocomplete="off">    
+            </div>
+            <h3>Vencedores por adicionar:</h3>
+            <h3>Vencedores adicionados:</h3>
+            <div class="divTable">
+                <ul>
+                    <li v-for="ven in vencedoresPorAdicionar" v-bind:key="ven.key" v-show="displayV(ven)"><p>{{ven.tipoParticipante + " - " + ven.participante.nome}}</p><button class="btnLista" @click="adicionarVencedor(ven)" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Adicionar</button></li>
+                </ul>
+            </div>
+            <div class="divTable">
+                <ul>
+                    <li v-for="ven in vencedoresAdicionados" v-bind:key="ven.key" v-show="displayV(ven)"><p>{{ven.tipoParticipante + " - " + ven.participante.nome}}</p><button class="btnLista" @click="removerVencedor(ven)" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Remover</button></li>
+                </ul>
             </div>
         </div>
-        <div>
-            <label for="tipoVen">Tipo de vencedor: </label>
-            <select name="tipoVen" v-model="tipoPesquisaVen">
-                <option value="">Todos</option>
-                <option value="Politico">Político</option>
-                <option value="Empresario">Empresário</option>
-                <option value="Organizacao">Organização</option>
-                <option value="CidadaoRegistado">Cidadão Registado</option>
-            </select>
-            <label for="pesquisaVen">Pesquisa: </label>
-            <input type="text" name="pesquisaVen" v-model="textoPesquisaVen" autocomplete="off">
-            <div v-for="ven in vencedoresPorAdicionar" v-bind:key="ven.key">
-                <h3 v-if="displayV(ven)">{{ven.tipoParticipante + " - " + ven.participante.nome}}<button @click="adicionarVencedor(ven)">Adicionar</button></h3>
-            </div>
-        </div>
-        <div>
-            <h2>Vencedores adicionados:</h2>
-            <div v-for="ven in vencedoresAdicionados" v-bind:key="ven.key">
-                <h3>{{ven.tipoParticipante + " - " + ven.participante.nome}}<button @click="removerVencedor(ven)">Remover</button></h3>
-            </div>
-        </div>
-        <button @click="create">Criar concurso</button>
-        <button @click="cancelar">Cancelar</button>
+        <button class="outerBtn" @click="create" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Criar concurso</button>
+        <button class="outerBtn" @click="cancelar" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Cancelar</button>
     </div>
 </template>
 
@@ -234,13 +246,157 @@ export default {
             this.textoPesquisaPar = "";
             this.tipoPesquisaVen = "";
             this.textoPesquisaVen = "";
+        },
+        startBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.add("clicked");
+            }
+            
+        },
+        finishBtnClick(e){
+            if(e.button == 0){
+                e.srcElement.classList.remove("clicked");  
+            }
         }
     }
 }
 </script>
 
 <style scoped>
-div {
-    border: 1px solid black;
-}
+    li {
+        list-style: none;
+        text-align: justify;
+        margin: 15px 20px 15px 10px;
+    }
+
+    .outer {
+        height: 2450px;
+        background-color: #8CA3B4;
+    }
+
+    .wrapperInfo {
+        width: 60%;
+        margin-left: 17%;
+        margin-right: 19%;
+        text-align: justify;
+    }
+
+    .wrapperInfo label {
+        font-size: 17px;
+        margin: 15px 0px 15px 50px;
+        font-weight: bold;
+        width: 220px;
+        display: inline-block;
+    }
+
+    .wrapperInfo .radioInput {
+        position: relative;
+        top: 5px;
+        height: 25px;
+        margin: 10px 0px 20px 10px;
+        padding: 0px 10px 0px 10px;
+    }
+
+    .wrapperInfo .normalInput {
+        width: 200px;
+        height: 25px;
+        margin: 10px 0px 20px 10px;
+        border-radius: 5px;
+        padding: 0px 10px 0px 10px;
+    }
+
+    .wrapperInfo select {
+        width: 220px;
+        height: 28px;
+        margin: 10px 0px -5px 10px;
+        border-radius: 5px;
+        padding: 0px 10px 0px 10px;
+    }
+
+    .wrapperInfo textarea {
+        width: 1000px;
+        height: 300px;
+        margin: 6px 0px 6px 0px;
+        border-radius: 5px;
+        padding: 0px 10px 0px 10px;
+    }
+
+    .divSearchbar {
+        background-color: #B2B8CB;
+        padding: 20px 35px 45px 35px;
+        width: 88%;
+        border-radius: 20px;
+        margin: auto;
+        margin-bottom: 30px;
+    }
+
+    .divSearchbar > select {
+        height: 25px;
+        width: 300px;
+        font-size: 16px;
+        margin: -2px 20px 0px 5px;
+        float: left;
+        border-radius: 5px;
+        background-color: #DDDDDD;
+    }
+
+    .divSearchbar > input {
+        height: 18px;
+        width: 300px;
+        font-size: 16px;
+        margin-right: 15px;
+        float: right;
+        border-radius: 5px;
+        background-color: #DDDDDD;
+    }
+
+    .divSearchbar > label {
+        font-size: 18px;
+        font-weight: 600;
+        float: left;
+        border-radius: 5px;
+    }
+
+    .wrapperTabelas {
+        height: 850px;
+        margin-top: 10px;
+    }
+
+    .divTable {
+        height: 600px;
+        float: left;
+        width: 44%;
+        margin: 2% 0.1% 0% 2.7%;
+        padding: 20px 15px 20px 15px;
+        background-color: #cccccc;
+        border-radius: 20px;
+        overflow: auto;
+    }
+
+    h3 {
+        color: black;
+        font-size: 20px;
+        margin-left: 14.3%;
+        margin-right: 14.3%;
+        display: inline;
+        background-color: #9e8a7c;
+        padding: 6px 15px 6px 15px;
+        border-radius: 15px;
+    }
+
+    p {
+        display: inline;
+        width: 200px;
+    }
+
+    .btnLista {
+        float: right;
+    }
+
+    .outerBtn {
+        margin: 25px 25px 10px 25px;
+        width: 160px;
+        padding: 5px;
+        height: 35px;
+    }
 </style>

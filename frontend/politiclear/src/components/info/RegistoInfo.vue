@@ -1,9 +1,9 @@
 <template>
     <div v-if="info.registo">
-        <h2>Título: {{ info.registo.titulo }}</h2>
-        <router-link tag="h3" :to="{path: '/CidadaosCreditados/' + info.autor.id}">Autor: {{ info.autor.nome }}</router-link>
+        <h2><b>Título:</b> {{ info.registo.titulo }}</h2>
+        <router-link tag="h3" :to="{path: '/CidadaosCreditados/' + info.autor.id}"><b>Autor:</b> {{ info.autor.nome }}</router-link>
         <router-view/>
-        <h3>Descrição: {{ info.registo.descricao }}</h3>
+        <h3><b>Descrição:</b> {{ info.registo.descricao }}</h3>
     </div>
 </template>
 
