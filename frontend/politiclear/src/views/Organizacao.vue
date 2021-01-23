@@ -1,5 +1,5 @@
 <template>
-    <div>
+    <div class="viewWrapper">
         <OrganizacaoInfo class="info" v-bind:info="this.profile"/>
         <button @click="node" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Ver rede de contactos</button>
         <button v-if="possivelAssociar" @click="toggleAssociar" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Associar-me a esta organização</button>
@@ -139,5 +139,7 @@ export default {
 </script>
 
 <style scoped>
-
+    button {
+        margin: 5px 15px 5px 15px;
+    }
 </style>

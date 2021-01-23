@@ -1,5 +1,5 @@
 <template>
-    <div>
+    <div class="viewWrapper">
         <CidadaoRegistadoInfo class="info" v-bind:info="this.profile"/>
         <button @click="node" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Ver rede de contactos</button>
         <CidadaoRegistadoInfoLists class="listaInfo" v-bind:info="this.profile"/>

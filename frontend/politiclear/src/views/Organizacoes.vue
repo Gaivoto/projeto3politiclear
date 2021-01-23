@@ -1,5 +1,5 @@
 <template>
-    <div>
+    <div class="viewWrapper">
         <OrganizacoesSearch class="searchbar" v-on:pesquisar="updateList"/>
         <ElementList class="lista" tipo="OrganizacaoCard" v-bind:lista="this.lista"/>
         <ErrorModal v-show="isErrorVisible" v-bind:msg="this.msg" v-on:fechar="hideError"/>

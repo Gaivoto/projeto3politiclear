@@ -1,5 +1,5 @@
 <template>
-    <div>
+    <div class="viewWrapper">
         <EventosSearch class="searchbar" v-on:pesquisar="updateList"/>
         <router-link class="btnCriar" v-if="possivelCriar" tag="button" @mousedown.native="startBtnClick" @mouseup.native="finishBtnClick" @mouseleave.native="finishBtnClick" to="/eventos/create">Criar novo evento</router-link>
         <router-view></router-view>
@@ -28,7 +28,7 @@ export default {
             isErrorVisible: false
         }
     },
-    created(){
+    mounted(){
         axios.get("http://localhost:3000/api/eventos")
             .then(async (response) => {
                 response.data.forEach(element => {

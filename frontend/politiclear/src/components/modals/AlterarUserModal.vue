@@ -2,7 +2,7 @@
     <div id="wrapper" @click="cancelar">
         <div v-if="this.user.user" id="innerDiv">
             <h3>Alterar Utilizador</h3>
-            <h3>Deixe em branco os campos que não pretende alterar.</h3>
+            <h4>Deixe em branco os campos que não pretende alterar.</h4>
             <h4>Nome atual: {{ this.user.user.nome }}</h4>
             <h4>Username atual: {{ this.user.user.username }}</h4>
             <h4>Cartão cidadão atual: {{ this.user.user.nCC }}</h4>
@@ -156,7 +156,7 @@ export default {
 
 <style scoped>
     #wrapper {
-        position: absolute;
+        position: fixed;
         top: 0px;
         left: 0px;
         width: 100%;
@@ -166,11 +166,11 @@ export default {
 
     #innerDiv {
         background-color: white;
-        width: 25%;
-        height: 85%;
-        padding: 30px 50px 50px 50px;
+        width: 380px;
+        height: 700px;
+        padding: 5px 50px 50px 50px;
         margin: auto;
-        margin-top: 1%;
+        margin-top: 0.1%;
         text-align: justify;
         border-radius: 10px;
     }
@@ -192,7 +192,7 @@ export default {
     #innerDiv input, #innerDiv select {
         width: 200px;
         height: 25px;
-        margin: 6px 0px 6px 0px;
+        margin: 4px 0px 4px 0px;
         border-radius: 5px;
         padding: 0px 10px 0px 10px;
     }

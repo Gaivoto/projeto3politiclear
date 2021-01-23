@@ -136,7 +136,7 @@ export default {
 
 <style scoped>
     #wrapper {
-        position: absolute;
+        position: fixed;
         top: 0px;
         left: 0px;
         width: 100%;
@@ -146,8 +146,8 @@ export default {
 
     #innerDiv {
         background-color: white;
-        width: 26%;
-        height: 65%;
+        width: 400px;
+        height: 490px;
         padding: 40px 50px 50px 50px;
         margin: auto;
         margin-top: 6%;

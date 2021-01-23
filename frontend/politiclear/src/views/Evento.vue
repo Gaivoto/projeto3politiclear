@@ -1,5 +1,5 @@
 <template>
-    <div>
+    <div class="viewWrapper">
         <EventoInfo class="info" v-bind:info="this.info"/>
         <button @click="node" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Ver rede de contactos</button>
         <button v-if="possivelParticipar" @click="toggleParticipar" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Participar neste evento</button>

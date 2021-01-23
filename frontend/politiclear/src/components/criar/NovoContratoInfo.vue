@@ -14,7 +14,9 @@
             <input class="normalInput" type="text" name="titulo" v-model="nome" autocomplete="off"><br>
             <label for="tipo">Tipo:</label>
             <select name="tipo" v-model="tipo">
-                <option value="Construcao">Construção</option>
+                <option value="Construção">Construção</option>
+                <option value="Educação">Educação</option>
+                <option value="Saúde">Saúde</option>
                 <option value="Outro">Outro</option>
             </select><br>
             <label for="dataInicio">Data de início:</label>
@@ -29,19 +31,22 @@
         <div class="wrapperTabelas">
             <div class="divSearchbar">
                 <label for="tipoPro">Tipo de preponente: </label>
-                <select name="tipoPro" v-model="tipoPesquisaPro" style="margin-right: 450px;">
+                <select name="tipoPro" v-model="tipoPesquisaPro">
                     <option value="">Todos</option>
                     <option value="Politico">Político</option>
                     <option value="Empresario">Empresário</option>
                     <option value="Organizacao">Organização</option>
                     <option value="CidadaoRegistado">Cidadão Registado</option>
                 </select>
-                <label for="pesquisaPro">Pesquisa: </label>
-                <input type="text" name="pesquisaPro" v-model="textoPesquisaPro" autocomplete="off">
+                <div>
+                    <label for="pesquisaPro">Pesquisa: </label>
+                    <input type="text" name="pesquisaPro" v-model="textoPesquisaPro" autocomplete="off">    
+                </div>
             </div>
-
-            <h3>Preponentes por adicionar:</h3>
-            <h3>Preponentes adicionados:</h3>
+            <div class="createH3Wrapper">
+                <h3 class="h31">Preponentes por adicionar:</h3>
+                <h3 class="h32">Preponentes adicionados:</h3>
+            </div>
             <div class="divTable">
                 <ul>
                     <li v-for="pro in proposicoesPorAdicionar" v-bind:key="pro.key" v-show="displayP(pro)"><p>{{pro.tipoAssinatura + " - " + pro.assinatura.nome}}</p><button class="btnLista" @click="adicionarProposicao(pro)" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Adicionar</button></li>
@@ -57,18 +62,23 @@
         <div class="wrapperTabelas">
             <div class="divSearchbar">
                 <label for="tipoAss">Tipo de assinatura: </label>
-                <select name="tipoAss" v-model="tipoPesquisaAss" style="margin-right: 450px;">
+                <select name="tipoAss" v-model="tipoPesquisaAss">
                     <option value="">Todos</option>
                     <option value="Politico">Político</option>
                     <option value="Empresario">Empresário</option>
                     <option value="Organizacao">Organização</option>
                     <option value="CidadaoRegistado">Cidadão Registado</option>
                 </select>
-                <label for="pesquisaAss">Pesquisa: </label>
-                <input type="text" name="pesquisaAss" v-model="textoPesquisaAss" autocomplete="off">
+                <div>
+                    <label for="pesquisaAss">Pesquisa: </label>
+                    <input type="text" name="pesquisaAss" v-model="textoPesquisaAss" autocomplete="off">    
+                </div>
             </div>
-            <h3>Assinaturas por adicionar:</h3>
-            <h3>Assinaturas adicionadas:</h3>
+
+            <div class="createH3Wrapper">
+                <h3 class="h31">Assinaturas por adicionar:</h3>
+                <h3 class="h32">Assinaturas adicionadas:</h3>
+            </div>
             <div class="divTable">
                 <ul>
                     <li v-for="ass in assinaturasPorAdicionar" v-bind:key="ass.key" v-show="displayA(ass)"><p>{{ass.tipoAssinatura + " - " + ass.assinatura.nome}}</p><button class="btnLista"  @click="adicionarAssinatura(ass)" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Adicionar</button></li>
@@ -87,8 +97,10 @@
                 <input type="text" name="pesquisaCon" v-model="textoPesquisaCon" autocomplete="off">
             </div>
 
-            <h3>Concursos por adicionar:</h3>
-            <h3>Concursos adicionados:</h3>
+            <div class="createH3Wrapper">
+                <h3 class="h31">Concursos por adicionar:</h3>
+                <h3 class="h32">Concursos adicionados:</h3>
+            </div>
             <div class="divTable">
                 <ul>
                     <li v-for="con in concursosPorAdicionar" v-bind:key="con.id" v-show="displayC(con)"><p>{{con.nome}}</p><button class="btnLista" @click="adicionarConcurso(con)" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Adicionar</button></li>
@@ -351,14 +363,14 @@ export default {
     }
 
     .outer {
-        height: 3700px;
+        height: 3780px;
         background-color: #8CA3B4;
     }
 
     .wrapperInfo {
-        width: 60%;
-        margin-left: 17%;
-        margin-right: 19%;
+        width: 66%;
+        margin-left: 14%;
+        margin-right: 16%;
         text-align: justify;
     }
 
@@ -395,7 +407,7 @@ export default {
     }
 
     .wrapperInfo textarea {
-        width: 1000px;
+        width: 100%;
         height: 300px;
         margin: 6px 0px 6px 0px;
         border-radius: 5px;
@@ -411,7 +423,7 @@ export default {
         margin-bottom: 25px;
     }
 
-    .divSearchbar > select {
+    .divSearchbar select {
         height: 25px;
         width: 300px;
         font-size: 16px;
@@ -421,7 +433,7 @@ export default {
         background-color: #DDDDDD;
     }
 
-    .divSearchbar > input {
+    .divSearchbar input {
         height: 18px;
         width: 300px;
         font-size: 16px;
@@ -429,9 +441,10 @@ export default {
         float: right;
         border-radius: 5px;
         background-color: #DDDDDD;
+        margin-left: 10px;
     }
 
-    .divSearchbar > label {
+    .divSearchbar label {
         font-size: 18px;
         font-weight: 600;
         float: left;
@@ -454,15 +467,30 @@ export default {
         overflow: auto;
     }
 
-    h3 {
+    .createH3Wrapper {
+        margin-left: 16%;
+        margin-right: 16%;
+    }
+
+    .createH3Wrapper > h3 {
         color: black;
         font-size: 20px;
-        margin-left: 14.3%;
-        margin-right: 14.3%;
         display: inline;
         background-color: #9e8a7c;
         padding: 6px 15px 6px 15px;
         border-radius: 15px;
+    }
+
+    .createH3Wrapper > .h31 {
+        float: left;
+    }
+
+    .createH3Wrapper > .h32 {
+        float: right;
+    }
+
+    .divSearchbar > div {
+        float: right;
     }
 
     p {

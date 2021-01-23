@@ -1,5 +1,5 @@
 <template>
-    <div>
+    <div class="viewWrapper">
         <ConcursoInfo class="info" v-bind:info="this.info"/>
         <button @click="node" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Ver rede de contactos</button>
         <router-link tag="button" @mousedown.native="startBtnClick" @mouseup.native="finishBtnClick" @mouseleave.native="finishBtnClick" v-if="possivelAlterar" :to="{path: '/concursos/'+ this.$route.params.id + '/edit'}">Alterar este concurso</router-link>

@@ -21,16 +21,6 @@
             </div>
         </div>
         <div class="divWrapper">
-            <div v-if="profile.organizacoes && showOrganizacoes">
-                <h3>Organizações:</h3>
-                <ul>
-                    <router-link tag="li" v-for="org in profile.organizacoes" v-bind:key="org.id" :to="{path: '/organizacoes/' + org.id}">{{ org.nome }}</router-link>
-                    <router-view/>
-                </ul>  
-            </div>
-        
-        </div>
-        <div class="divWrapper">
             <h3>Concursos:</h3>
             <div v-if="profile.concursos">
                 <h3 class="subTopic" v-if="showOutros">Organizados:</h3>
@@ -73,6 +63,16 @@
                     <router-link tag="li" v-for="eve in profile.eventos.participados" v-bind:key="eve.id" :to="{path: '/eventos/' + eve.id}">{{ eve.nome }}</router-link>
                     <router-view/>
                 </ul>    
+            </div>
+        </div>
+        
+        <div class="divWrapper">
+            <div v-if="profile.organizacoes && showOrganizacoes">
+                <h3>Organizações:</h3>
+                <ul>
+                    <router-link tag="li" v-for="org in profile.organizacoes" v-bind:key="org.id" :to="{path: '/organizacoes/' + org.id}">{{ org.nome }}</router-link>
+                    <router-view/>
+                </ul>  
             </div>
         </div>
     </div>

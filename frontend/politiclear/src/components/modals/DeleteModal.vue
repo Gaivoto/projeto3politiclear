@@ -41,7 +41,7 @@ export default {
 
 <style scoped>
     #wrapper {
-        position: absolute;
+        position: fixed;
         top: 0px;
         left: 0px;
         width: 100%;
@@ -51,10 +51,16 @@ export default {
 
     #innerDiv {
         background-color: white;
-        width: 25%;
-        height: 20%;
+        width: 380px;
+        height: 160px;
         padding: 50px;
         margin: auto;
         margin-top: 10%;
+        border-radius: 10px;
+    }
+
+    #innerDiv > button {
+        margin: 30px 15px 10px 15px;
+        width: 100px;
     }
 </style>

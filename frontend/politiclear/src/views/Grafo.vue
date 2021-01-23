@@ -1,5 +1,5 @@
 <template>
-    <div>
+    <div class="viewWrapper">
         <svg id="grafo">
         
         </svg>
@@ -336,7 +336,7 @@ export default {
 <style scoped>
     svg {
         border: solid black 1px;
-        height: 550px;
+        height: 590px;
         width: 95%;
         background-color: white;
         margin-top: 10px;
@@ -354,6 +354,8 @@ export default {
         padding: 5px;
         background-color: white;
         border-radius: 5px;
+        overflow: auto;
+        text-align: left;
     }
 
     .legendaColor {

@@ -3,8 +3,10 @@
         <label for="tipo">Tipo:</label>
         <select name="tipo" id="tipo" v-model="tipo">
             <option value="">Todos</option>
-            <option value="construcao">Construção</option>
-            <option value="outro">Outro</option>
+            <option value="Construção">Construção</option>
+            <option value="Educação">Educação</option>
+            <option value="Saúde">Saúde</option>
+            <option value="Outro">Outro</option>
         </select>
         <label for="data">Data:</label>
         <select name="data" id="data" v-model="data">

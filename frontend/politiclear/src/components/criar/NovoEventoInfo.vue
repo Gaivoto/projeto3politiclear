@@ -25,7 +25,7 @@
         <div class="wrapperTabelas">
             <div class="divSearchbar">
                 <label for="tipo">Tipo de convidado: </label>
-                <select name="tipo" v-model="tipoPesquisa" style="margin-right: 450px;">
+                <select name="tipo" v-model="tipoPesquisa">
                     <option value="">Todos</option>
                     <option value="Politico">Político</option>
                     <option value="Empresario">Empresário</option>
@@ -33,11 +33,15 @@
                     <option value="CidadaoCreditado">Cidadão Creditado</option>
                     <option value="CidadaoRegistado">Cidadão Registado</option>
                 </select>
-                <label for="pesquisa">Pesquisa: </label>
-                <input type="text" name="pesquisa" v-model="textoPesquisa" autocomplete="off">
+                <div>
+                    <label for="pesquisa">Pesquisa: </label>
+                    <input type="text" name="pesquisa" v-model="textoPesquisa" autocomplete="off">    
+                </div>
             </div>
-            <h3>Convidados por adicionar:</h3>
-            <h3>Convidados adicionados:</h3>
+            <div class="createH3Wrapper">
+                <h3 class="h31">Convidados por adicionar:</h3>
+                <h3 class="h32">Convidados adicionados:</h3>    
+            </div>
             <div class="divTable">
                 <ul>
                     <li v-for="con in convidadosPorAdicionar" v-bind:key="con.key" v-show="display(con)"><p>{{con.tipoConvidado + " - " + con.convidado.nome}}</p><button class="btnLista" @click="adicionarConvidado(con)" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Adicionar</button></li>
@@ -183,14 +187,14 @@ export default {
     }
 
     .outer {
-        height: 1600px;
+        height: 1670px;
         background-color: #8CA3B4;
     }
 
     .wrapperInfo {
-        width: 60%;
-        margin-left: 17%;
-        margin-right: 19%;
+        width: 66%;
+        margin-left: 14%;
+        margin-right: 16%;
         text-align: justify;
     }
 
@@ -227,7 +231,7 @@ export default {
     }
 
     .wrapperInfo textarea {
-        width: 1000px;
+        width: 100%;
         height: 300px;
         margin: 6px 0px 6px 0px;
         border-radius: 5px;
@@ -243,7 +247,7 @@ export default {
         margin-bottom: 25px;
     }
 
-    .divSearchbar > select {
+    .divSearchbar select {
         height: 25px;
         width: 300px;
         font-size: 16px;
@@ -253,7 +257,7 @@ export default {
         background-color: #DDDDDD;
     }
 
-    .divSearchbar > input {
+    .divSearchbar input {
         height: 18px;
         width: 300px;
         font-size: 16px;
@@ -263,11 +267,16 @@ export default {
         background-color: #DDDDDD;
     }
 
-    .divSearchbar > label {
+    .divSearchbar label {
         font-size: 18px;
         font-weight: 600;
         float: left;
         border-radius: 5px;
+        margin-right: 10px;
+    }
+
+    .divSearchbar > div {
+        float: right;
     }
 
     .wrapperTabelas {
@@ -287,15 +296,26 @@ export default {
         overflow: auto;
     }
 
-    h3 {
+    .createH3Wrapper {
+        margin-left: 16%;
+        margin-right: 16%;
+    }
+
+    .createH3Wrapper > h3 {
         color: black;
         font-size: 20px;
-        margin-left: 14.3%;
-        margin-right: 14.3%;
         display: inline;
         background-color: #9e8a7c;
         padding: 6px 15px 6px 15px;
         border-radius: 15px;
+    }
+
+    .createH3Wrapper > .h31 {
+        float: left;
+    }
+
+    .createH3Wrapper > .h32 {
+        float: right;
     }
 
     p {

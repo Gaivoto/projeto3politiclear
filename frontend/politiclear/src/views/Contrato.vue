@@ -1,5 +1,5 @@
 <template>
-    <div class="element">
+    <div class="element viewWrapper">
         <ContratoInfo class="info" v-bind:info="this.info"/>
         <button @click="node" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Ver rede de contactos</button>
         <router-link tag="button" v-if="possivelAlterar" @mousedown.native="startBtnClick" @mouseup.native="finishBtnClick" @mouseleave.native="finishBtnClick" :to="{path: '/contratos/'+ this.$route.params.id + '/edit'}">Alterar este contrato</router-link>

@@ -1,8 +1,8 @@
 <template>
-    <div>
+    <div class="wrapperAdm">
         <div id="navAdm">
-            <router-link tag="h3" to="/areaAdm/users">Utilizadores</router-link>
-            <router-link tag="h3" to="/areaAdm/orgs">Organizações</router-link>
+            <router-link @mouseover.native="startHoverHeader" @mouseleave.native="finishHoverHeader" tag="h3" to="/areaAdm/users">Utilizadores</router-link>
+            <router-link @mouseover.native="startHoverHeader" @mouseleave.native="finishHoverHeader" tag="h3" to="/areaAdm/orgs">Organizações</router-link>
             <router-view></router-view>
         </div>
         <OrganizacoesSearch class="searchbar" v-on:pesquisar="updateList"/>
@@ -211,6 +211,12 @@ export default {
             if(e.button == 0){
                 e.srcElement.classList.remove("clicked");  
             }
+        },
+        startHoverHeader(e){
+            e.srcElement.classList.add("linkHoverAdm");
+        },
+        finishHoverHeader(e){
+            e.srcElement.classList.remove("linkHoverAdm");
         }
     }
 }

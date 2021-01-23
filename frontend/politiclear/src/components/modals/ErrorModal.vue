@@ -19,6 +19,15 @@ export default {
     methods: {
         close(e){
             if(e.srcElement.id == "wrapper" || e.srcElement.id == "close"){
+                if(this.$router.history.current.path != "/" && this.msg == "A sua sessão expirou. Faça login novamente."){
+                    this.$router.push("/");  
+                } else if(this.msg == "Concurso eliminado com sucesso." || this.msg == "Concurso alterado com sucesso." || this.msg == "Concurso criado com sucesso."){
+                    this.$router.push("/concursos");
+                } else if(this.msg == "Evento eliminado com sucesso." || this.msg == "Evento alterado com sucesso." || this.msg == "Evento criado com sucesso."){
+                    this.$router.push("/eventos");
+                } else if(this.msg == "Contrato eliminado com sucesso." || this.msg == "Contrato alterado com sucesso." || this.msg == "Contrato criado com sucesso."){
+                    this.$router.push("/contratos");
+                }
                 this.$emit('fechar');
             }
         },
@@ -49,8 +58,8 @@ export default {
 
     #innerDiv {
         background-color: white;
-        width: 25%;
-        height: 20%;
+        width: 380px;
+        height: 150px;
         padding: 50px;
         margin: auto;
         margin-top: 10%;

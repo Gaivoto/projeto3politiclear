@@ -1,5 +1,5 @@
 <template>
-    <div>
+    <div class="viewWrapper">
         <PoliticosSearch class="searchbar" v-bind:partidos="this.partidos" v-on:pesquisar="updateList"/>
         <ElementList class="lista" tipo="PoliticoCard" v-bind:lista="this.lista"/>
         <ErrorModal v-show="isErrorVisible" v-bind:msg="this.msg" v-on:fechar="hideError"/>

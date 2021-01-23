@@ -1,5 +1,5 @@
 <template>
-    <div>
+    <div class="viewWrapper">
         <RegistoInfo class="info" v-bind:info="this.info"/>
         <button @click="node" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Ver rede de contactos</button>
         <NovoVotoInfo v-if="possivelVotarComentar" v-on:votar="criarVoto" v-bind:votos="this.info.votos"/>
@@ -167,6 +167,7 @@ export default {
                 axios.get(`http://localhost:3000/api/registos/${this.$route.params.id}`)
                 .then((response) => {
                     this.info = response.data;
+                    this.showError("Comentário apagado com sucesso.");
                 })
                 .catch(error => {
                     if(error.response.data.details){

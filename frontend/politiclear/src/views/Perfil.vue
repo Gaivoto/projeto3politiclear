@@ -1,14 +1,14 @@
 <template>
-    <div>
+    <div class="viewWrapper">
         <ProfileInfo class="info" v-bind:info="this.info.user"/>
         <button class="btn" @click="node" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Ver rede de contactos</button>
         <button class="btn" v-if="possivelAlterarPerfil" @click="toggleAlterar" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick">Alterar perfil</button>
         <AlterarPerfilModal v-show="isAlterarVisible" v-bind:info="this.info.user" v-on:alterar="alterarPerfil" v-on:cancelar="toggleAlterar" v-on:erro="showError"/>
         <ProfileList class="listaInfo" v-bind:profile="this.info"/>
         <router-link id="btnNovoRegisto" class="btnCriar" v-if="possivelCriarRegisto" tag="button" @mousedown.native="startBtnClick" @mouseup.native="finishBtnClick" @mouseleave.native="finishBtnClick" to="/registos/create">Criar novo registo</router-link>
-        <router-link id="btnNovoConcurso" class="btnCriar" v-if="possivelCriarOutros" tag="button" @mousedown.native="startBtnClick" @mouseup.native="finishBtnClick" @mouseleave.native="finishBtnClick" to="/concursos/create">Criar novo concurso</router-link>
-        <router-link id="btnNovoContrato" class="btnCriar" v-if="possivelCriarOutros" tag="button" @mousedown.native="startBtnClick" @mouseup.native="finishBtnClick" @mouseleave.native="finishBtnClick" to="/contratos/create">Criar novo contrato</router-link>
-        <router-link id="btnNovoEvento" class="btnCriar" v-if="possivelCriarOutros" tag="button" @mousedown.native="startBtnClick" @mouseup.native="finishBtnClick" @mouseleave.native="finishBtnClick" to="/eventos/create">Criar novo evento</router-link>
+        <router-link class="btnCriar" v-if="possivelCriarOutros" tag="button" @mousedown.native="startBtnClick" @mouseup.native="finishBtnClick" @mouseleave.native="finishBtnClick" to="/concursos/create">Criar novo concurso</router-link>
+        <router-link class="btnCriar" v-if="possivelCriarOutros" tag="button" @mousedown.native="startBtnClick" @mouseup.native="finishBtnClick" @mouseleave.native="finishBtnClick" to="/contratos/create">Criar novo contrato</router-link>
+        <router-link class="btnCriar" v-if="possivelCriarOutros" tag="button" @mousedown.native="startBtnClick" @mouseup.native="finishBtnClick" @mouseleave.native="finishBtnClick" to="/eventos/create">Criar novo evento</router-link>
         <router-view></router-view>
         <ErrorModal v-show="isErrorVisible" v-bind:msg="this.msg" v-on:fechar="hideError"/>
     </div>
@@ -159,32 +159,19 @@ export default {
 </script>
 
 <style scoped>
-    #btnNovoRegisto {
-        position: absolute;
-        left: 80px;
-        top: 670px;
-    }
-
-    #btnNovoConcurso {
-        position: absolute;
-        left: 680px;
-        top: 670px;
-    }
-
-    #btnNovoContrato {
-        position: absolute;
-        left: 1000px;
-        top: 670px;
-    }
-
-    #btnNovoEvento {
-        position: absolute;
-        left: 1310px;
-        top: 670px;
-    }
-
     .btn {
         margin: 20px 10px 20px 10px;
         width: 200px;
+    }
+
+    #btnNovoRegisto {
+        float: left;
+        margin-left: 3%;
+    }
+
+    .btnCriar {
+        width: 15%;
+        margin: 1.5% 2.5% 1.5% 2.5%;
+        overflow: hidden;
     }
 </style>

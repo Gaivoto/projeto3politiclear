@@ -1411,9 +1411,9 @@ app.get("/api/registos", (req, res) => {
 
     if(req.query.search){
         if(statement.includes("WHERE")){
-            statement = statement + ` AND (r.nome =~ '(?i).*${req.query.search}.*' OR n.nome=~ '(?i).*${req.query.search}.*')`;
+            statement = statement + ` AND (r.titulo =~ '(?i).*${req.query.search}.*' OR n.nome=~ '(?i).*${req.query.search}.*')`;
         } else {
-            statement = statement + ` WHERE (r.nome =~ '(?i).*${req.query.search}.*' OR n.nome=~ '(?i).*${req.query.search}.*')`;
+            statement = statement + ` WHERE (r.titulo =~ '(?i).*${req.query.search}.*' OR n.nome=~ '(?i).*${req.query.search}.*')`;
         }
     }
 
@@ -1449,8 +1449,6 @@ app.get("/api/registos", (req, res) => {
                 break;
         }
     }
-
-    console.log(statement)
     
     session.run(statement)
         .then((result) => {
@@ -6072,7 +6070,7 @@ function validateConcurso(concurso){
         organizacao: Joi.number().min(1),
         nome: Joi.string().min(5).max(50).required(),
         descricao: Joi.string().min(1).max(1000).required(),
-        tipo: Joi.string().valid('Construcao', 'Outro').required(),
+        tipo: Joi.string().valid('Construção', 'Outro', 'Educação', 'Saúde').required(),
         dataInicio: Joi.date().required(),
         dataFim: Joi.date().min(Joi.ref('dataInicio')).required(),
         participantes: Joi.array().min(1).items(Joi.object({
@@ -6094,7 +6092,7 @@ function validateAlterarConcurso(concurso){
         organizacao: Joi.number().min(1),
         nome: Joi.string().min(5).max(50),
         descricao: Joi.string().min(1).max(1000),
-        tipo: Joi.string().valid('Construcao', 'Outro'),
+        tipo: Joi.string().valid('Construção', 'Outro', 'Educação', 'Saúde'),
         dataInicio: Joi.date(),
         dataFim: Joi.date().min(Joi.ref('dataInicio')),
         participantes: Joi.array().min(1).items(Joi.object({
@@ -6126,7 +6124,7 @@ function validateContrato(contrato){
         nome: Joi.string().min(5).max(50).required(),
         descricao: Joi.string().min(1).max(1000).required(),
         conclusao: Joi.string().min(1).max(1000).required(),
-        tipo: Joi.string().valid('Construcao', 'Outro').required(),
+        tipo: Joi.string().valid('Construção', 'Outro', 'Educação', 'Saúde').required(),
         dataInicio: Joi.date().required(),
         dataFim: Joi.date().min(Joi.ref('dataInicio')).required(),
         assinaturas: Joi.array().min(2).items(Joi.object({
@@ -6152,7 +6150,7 @@ function validateAlterarContrato(contrato){
         nome: Joi.string().min(5).max(50),
         descricao: Joi.string().min(1).max(1000),
         conclusao: Joi.string().min(1).max(1000),
-        tipo: Joi.string().valid('Construcao', 'Outro'),
+        tipo: Joi.string().valid('Construção', 'Outro', 'Educação', 'Saúde'),
         dataInicio: Joi.date(),
         dataFim: Joi.date().min(Joi.ref('dataInicio')),
         assinaturas: Joi.array().min(2).items(Joi.object({
@@ -6228,7 +6226,7 @@ function generateTokens(userInfo, res){
 
     var session = driver.session();
 
-    var accessToken = jwt.sign(userInfo, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '15m'});
+    var accessToken = jwt.sign(userInfo, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '20m'});
     var refreshToken = jwt.sign(userInfo, process.env.REFRESH_TOKEN_SECRET);
 
     var trans = session.beginTransaction();
@@ -6278,7 +6276,7 @@ async function refreshToken(userInfo, refreshToken, session, node){
             if(result.records.length > 0){
                 jwt.verify(result.records[0]._fields[0].properties.token, process.env.REFRESH_TOKEN_SECRET, (error, u) => {
                     if(!error && u.id == userInfo.id && u.tipo == userInfo.tipo){
-                        node.token = jwt.sign(userInfo, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '10m'});
+                        node.token = jwt.sign(userInfo, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '20m'});
                     }
                 });
             }

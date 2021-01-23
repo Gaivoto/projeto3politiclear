@@ -1,5 +1,5 @@
 <template>
-    <div>
+    <div class="viewWrapper">
         <RegistosSearch class="searchbar" v-on:pesquisar="updateList"/>
         <router-link class="btnCriar" v-if="possivelCriar" tag="button" @mousedown.native="startBtnClick" @mouseup.native="finishBtnClick" @mouseleave.native="finishBtnClick" to="/registos/create">Criar novo registo</router-link>
         <router-view></router-view>

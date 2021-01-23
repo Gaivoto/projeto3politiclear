@@ -1,7 +1,7 @@
 <template>
     <div>
         <div class="divWrapper">
-            <h3>Participantes:</h3>
+            <h3>Convidados:</h3>
             <ul v-if="this.participantes">
                 <div v-for="par in participantes" v-bind:key="par.key">
                     <router-link v-if="isOutro(par)" tag="li" :to="{path: '/' + par.tipo + 's/' + par.id}">{{ par.tipo + " - " + par.nome }}</router-link>

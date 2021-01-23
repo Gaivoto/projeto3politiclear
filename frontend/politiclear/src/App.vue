@@ -1,7 +1,6 @@
 <template>
   <div id="app">
     <div id="nav">
-      <div id="routes">
         <router-link @mouseover.native="startHoverHeader" @mouseleave.native="finishHoverHeader" tag="h3" to="/">Home</router-link>
         <router-link @mouseover.native="startHoverHeader" @mouseleave.native="finishHoverHeader" tag="h3" to="/registos">Registos</router-link>
         <router-link @mouseover.native="startHoverHeader" @mouseleave.native="finishHoverHeader" tag="h3" to="/eventos">Eventos</router-link>
@@ -10,14 +9,11 @@
         <router-link @mouseover.native="startHoverHeader" @mouseleave.native="finishHoverHeader" tag="h3" to="/politicos">Políticos</router-link>
         <router-link @mouseover.native="startHoverHeader" @mouseleave.native="finishHoverHeader" tag="h3" to="/empresarios">Empresários</router-link>
         <router-link @mouseover.native="startHoverHeader" @mouseleave.native="finishHoverHeader" tag="h3" to="/organizacoes">Organizações</router-link>
-        <router-link @mouseover.native="startHoverHeader" @mouseleave.native="finishHoverHeader" tag="h3" to="/cidadaosCreditados">Cidadãos Creditados</router-link>
-        <router-link @mouseover.native="startHoverHeader" @mouseleave.native="finishHoverHeader" v-if="$store.getters.getUser.info.tipo == 'Administrador'" tag="h3" to="/areaAdm/users">Área de Administrador</router-link>
-        <div id="logs">
-          <router-link @mouseover.native="startHoverHeader" @mouseleave.native="finishHoverHeader" v-if="$store.getters.getUser.info.tipo != '' && $store.getters.getUser.info.tipo != 'Administrador'" tag="h3" :to="{path: '/perfil/' + $store.getters.getUser.info.tipo + '/' + $store.getters.getUser.info.id}">Perfil</router-link>
-          <h3 class="log" @mouseover="startHoverHeader" @mouseleave="finishHoverHeader" v-if="!$store.getters.getUser.info.id" @click="toggleLogin">Login</h3>
-          <h3 class="log" @mouseover="startHoverHeader" @mouseleave="finishHoverHeader" v-if="$store.getters.getUser.info.id" @click="logout">Logout</h3>
-        </div>
-      </div>
+        <router-link @mouseover.native="startHoverHeader" @mouseleave.native="finishHoverHeader" tag="h3" class="lastLeft" to="/cidadaosCreditados">Cidadãos Creditados</router-link>
+        <router-link @mouseover.native="startHoverHeader" @mouseleave.native="finishHoverHeader" v-if="$store.getters.getUser.info.tipo == 'Administrador'" tag="h3" to="/areaAdm/users">Área de Admin</router-link>
+        <router-link @mouseover.native="startHoverHeader" @mouseleave.native="finishHoverHeader" v-if="$store.getters.getUser.info.tipo != '' && $store.getters.getUser.info.tipo != 'Administrador'" tag="h3" :to="{path: '/perfil/' + $store.getters.getUser.info.tipo + '/' + $store.getters.getUser.info.id}">Perfil</router-link>
+        <h3 class="log" @mouseover="startHoverHeader" @mouseleave="finishHoverHeader" v-if="!$store.getters.getUser.info.id" @click="toggleLogin">Login</h3>
+        <h3 class="log" @mouseover="startHoverHeader" @mouseleave="finishHoverHeader" v-if="$store.getters.getUser.info.id" @click="logout">Logout</h3>
     </div>
     <router-view/>
     <LoginModal v-show="isLoginVisible" v-on:fechar="toggleLogin" v-on:registar="toggleBoth" v-on:erro="showError" v-on:update-user="updateUser"/>
@@ -118,40 +114,50 @@ export default {
     margin: -10px;
   }
 
+  .viewWrapper {
+    height: 670px;
+    background-color: #8CA3B4;
+  }
+
   #nav {
-    padding: 30px;
     background-color: #405B6E;
-    border-radius: 50px;
+    padding: 1.5% 2% 1.5% 2%;
   }
 
   #navAdm {
     margin: -15px 0px -15px -0px;
   }
 
-  #routes {
-    background-color: white;
-    padding: 20px;
-    border-radius: 150px;
+  #nav > h3 {
+    display: inline-block;
+    margin: 0% 0.2% 0% 0.2%;
+    padding: 6px 10px 6px 10px;
+    font-size: 18px;
+    color: white;
+    border-radius: 15px;
+    cursor: pointer;
   }
 
-  #routes > h3, #logs > h3 {
-    display: inline;
-    margin-left: 2px;
-    margin-right: 2px;
-    padding: 4px 10px 4px 10px;
+  #navAdm > h3 {
+    display: inline-block;
+    margin: 0% 0.2% 0% 0.2%;
+    padding: 6px 10px 6px 10px;
     font-size: 18px;
     color: black;
     border-radius: 15px;
     cursor: pointer;
   }
 
-  #logs {
-    float: right;
-    margin-right: 40px;
+  #nav > .lastLeft {
+    margin-right: 6%;
   }
 
   .linkHover {
     background-color: #7291ad;
+  }
+
+  .linkHoverAdm {
+    background-color: #B2B8CB;
   }
 
   .searchbar {
@@ -165,7 +171,7 @@ export default {
 
   .searchbar > select {
     height: 25px;
-    width: 300px;
+    width: 20%;
     font-size: 16px;
     margin: -2px 20px 0px 5px;
     float: left;
@@ -175,7 +181,7 @@ export default {
 
   .searchbar > input {
     height: 18px;
-    width: 300px;
+    width: 20%;
     font-size: 16px;
     margin-right: 15px;
     float: right;
@@ -217,7 +223,7 @@ export default {
 
   .lista {
     overflow: auto;
-    height: 520px;
+    height: 550px;
     padding: 0% 10% 0% 10%;
     margin: auto;
     margin-top: 5px;
@@ -226,13 +232,13 @@ export default {
   .listaComentarios {
     overflow: auto;
     width: 70%;
-    height: 360px;
+    height: 320px;
     margin: 5px 0px 5px 75px;
     float: right;
   }
 
   .listaAdm {
-    height: 460px;
+    height: 490px;
   }
 
   .card h4 {
@@ -299,7 +305,7 @@ export default {
   .listaInfo {
     margin: 10px 10px 0px 10px;
     display: flex;
-    height: 280px;
+    height: 300px;
   }
 
   .listaInfo .divWrapper {
@@ -331,7 +337,17 @@ export default {
     cursor: pointer;
   }
 
+  textarea {
+    font-size: 16px;
+    font-family: Avenir, Helvetica, Arial, sans-serif;
+  }
+
   .clicked {
     transform: scale(0.95);
+  }
+
+  .wrapperAdm {
+    background-color: #8CA3B4;
+    height: 690px;  
   }
 </style>

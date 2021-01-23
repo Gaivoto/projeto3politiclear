@@ -21,7 +21,7 @@ export default {
     },
     computed: {
         possivelAlterar: function(){
-            return (this.$store.getters.getUser.info.tipo == "Administrador");
+            return (this.$store.getters.getUser.info.tipo == "Administrador" && this.$route.path == "/areaAdm/orgs");
         }
     },
     methods: {

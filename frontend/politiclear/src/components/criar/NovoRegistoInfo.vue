@@ -7,7 +7,7 @@
         <div class="wrapperTabelas">
             <div class="divSearchbar">
                 <label for="tipo">Tipo de assunto: </label>
-                <select name="tipo" v-model="tipoPesquisa" style="margin-right: 450px;">
+                <select name="tipo" v-model="tipoPesquisa">
                     <option value="">Todos</option>
                     <option value="Evento">Evento</option>
                     <option value="Concurso">Concurso</option>
@@ -18,11 +18,15 @@
                     <option value="CidadaoCreditado">Cidadão Creditado</option>
                     <option value="CidadaoRegistado">Cidadão Registado</option>
                 </select>
-                <label for="pesquisa">Pesquisa: </label>
-                <input type="text" name="pesquisa" v-model="textoPesquisa" autocomplete="off">
+                <div>
+                    <label for="pesquisa">Pesquisa: </label>
+                    <input type="text" name="pesquisa" v-model="textoPesquisa" autocomplete="off">    
+                </div>
             </div>
-            <h3>Assuntos por adicionar:</h3>
-            <h3>Assuntos adicionados:</h3>
+            <div class="createH3Wrapper">
+                <h3 class="h31">Assuntos por adicionar:</h3>
+                <h3 class="h32">Assuntos adicionados:</h3>    
+            </div>
             <div class="divTable">
                 <ul>
                     <li v-for="ass in assuntosPorAdicionar" v-show="display(ass)" v-bind:key="ass.key"><p>{{ass.tipoAssunto + " - " + ass.assunto.nome}}</p><button class="btnLista" @mousedown="startBtnClick" @mouseup="finishBtnClick" @mouseleave="finishBtnClick" @click="adicionarAssunto(ass)">Adicionar</button></li>
@@ -138,12 +142,14 @@ export default {
     }
 
     .outer {
-        height: 1240px;
+        height: 1300px;
         background-color: #8CA3B4;
     }
 
     .wrapperInfo {
-        display: inline-block;
+        width: 66%;
+        margin-left: 14%;
+        margin-right: 16%;
     }
 
     .wrapperInfo input {
@@ -155,7 +161,7 @@ export default {
     }
 
     .wrapperInfo textarea {
-        width: 1000px;
+        width: 100%;
         height: 300px;
         margin: 6px 0px 6px 0px;
         border-radius: 5px;
@@ -171,7 +177,7 @@ export default {
         margin-bottom: 25px;
     }
 
-    .divSearchbar > select {
+    .divSearchbar select {
         height: 25px;
         width: 300px;
         font-size: 16px;
@@ -181,7 +187,7 @@ export default {
         background-color: #DDDDDD;
     }
 
-    .divSearchbar > input {
+    .divSearchbar input {
         height: 18px;
         width: 300px;
         font-size: 16px;
@@ -189,9 +195,10 @@ export default {
         float: right;
         border-radius: 5px;
         background-color: #DDDDDD;
+        margin-left: 10px;
     }
 
-    .divSearchbar > label {
+    .divSearchbar label {
         font-size: 18px;
         font-weight: 600;
         float: left;
@@ -215,15 +222,35 @@ export default {
         overflow: auto;
     }
 
-    h3 {
-        color: black;
-        font-size: 20px;
+    .createH3Wrapper {
         margin-left: 16%;
         margin-right: 16%;
+    }
+
+    .createH3Wrapper > h3 {
+        color: black;
+        font-size: 20px;
         display: inline;
         background-color: #9e8a7c;
         padding: 6px 15px 6px 15px;
         border-radius: 15px;
+    }
+
+    .createH3Wrapper > .h31 {
+        float: left;
+    }
+
+    .createH3Wrapper > .h32 {
+        float: right;
+    }
+
+    .divSearchbar > div {
+        float: right;
+    }
+
+    p {
+        display: inline;
+        width: 200px;
     }
 
     p {

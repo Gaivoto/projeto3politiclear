@@ -43,7 +43,7 @@ export default {
 <style scoped>
   #divImg {
     width: 95%;
-    height: 250px;
+    height: 270px;
     margin: auto;
     margin-top: 25px;
     margin-bottom: 25px;
@@ -54,7 +54,7 @@ export default {
   #logo {
     height: 250px;
     width: 280px;
-    top: -102%;
+    top: -99%;
     left: 22%;
     position: relative;
     border-radius: 20%;
@@ -72,7 +72,7 @@ export default {
 
   .smallDiv {
     width: 22.27%;
-    height: 130px;
+    height: 135px;
     float: left;
     margin-top: 10px;
     margin-bottom: 20px;

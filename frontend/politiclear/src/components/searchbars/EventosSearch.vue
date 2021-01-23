@@ -3,8 +3,8 @@
         <label for="exclusividade">Exclusividade:</label>
         <select name="exclusividade" id="exclusividade" v-model="exclusividade">
             <option value="">Todos</option>
-            <option value="privado">Privado</option>
-            <option value="publico">Público</option>
+            <option value="Privado">Privado</option>
+            <option value="Publico">Público</option>
         </select>
         <label for="data">Data:</label>
         <select name="data" id="data" v-model="data">
