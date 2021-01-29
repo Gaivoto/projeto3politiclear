@@ -100,7 +100,6 @@ export default {
             if(e.button == 0){
                 e.srcElement.classList.add("clicked");
             }
-            
         },
         finishBtnClick(e){
             if(e.button == 0){

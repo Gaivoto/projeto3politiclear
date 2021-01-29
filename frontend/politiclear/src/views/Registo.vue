@@ -34,7 +34,7 @@ export default {
     },
     data(){
         return{
-            info: { votos: []},
+            info: { votos: [], credibilidade: 0},
             msg: "",
             isErrorVisible: false,
             isCreatingComment: false

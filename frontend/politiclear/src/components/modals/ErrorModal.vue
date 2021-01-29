@@ -27,6 +27,8 @@ export default {
                     this.$router.push("/eventos");
                 } else if(this.msg == "Contrato eliminado com sucesso." || this.msg == "Contrato alterado com sucesso." || this.msg == "Contrato criado com sucesso."){
                     this.$router.push("/contratos");
+                } else if(this.msg == "Registo criado com sucesso."){
+                    this.$router.push("/registos");
                 }
                 this.$emit('fechar');
             }

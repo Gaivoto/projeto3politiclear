@@ -125,7 +125,7 @@ export default {
   }
 
   #navAdm {
-    margin: -15px 0px -15px -0px;
+    margin: 0px 0px -15px -0px;
   }
 
   #nav > h3 {
@@ -141,7 +141,7 @@ export default {
   #navAdm > h3 {
     display: inline-block;
     margin: 0% 0.2% 0% 0.2%;
-    padding: 6px 10px 6px 10px;
+    padding: 0px 10px 6px 10px;
     font-size: 18px;
     color: black;
     border-radius: 15px;

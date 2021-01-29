@@ -25,7 +25,7 @@
             <label class="legendaText" style="color: #00CC00;">Cria</label>
         </div>
         <div class="divBottom">
-            <label style="float: left">Controlos: Use o botão esquerdo do rato para arrastar nodos. Clique com o botão direito do rato em cima de um nodo para ir para a página do mesmo. Use a roda do rato para mexer no zoom.</label>
+            <label style="float: left">Controlos: Botão esquerdo do rato - arrastar nodos. Click botão direito do rato num nodo - ir para a página do mesmo. Roda do rato - zoom.</label>
         </div>
         <ErrorModal v-show="isErrorVisible" v-bind:msg="this.msg" v-on:fechar="hideError"/>
     </div>
@@ -50,7 +50,8 @@ export default {
             dim: 500,
             types: ["ACERCA_DE", "GERA", "PROPOE", "ASSINA", "PERTENCE_A", "PARTICIPA_EM", "ORGANIZA", "VENCE", "CRIA"],
             width: 1000,
-            height: 1000
+            height: 1000,
+            node: null
         }
     },
     mounted(){
@@ -83,8 +84,8 @@ export default {
             let vue = this;
 
             const simulation = d3.forceSimulation(nodes)
-                .force("link", d3.forceLink(links).id(d => d.id))
-                .force("charge", d3.forceManyBody().strength(-2000).distanceMin(1).distanceMax(2000))
+                .force("link", d3.forceLink(links).distance(350).id(d => d.id))
+                .force("charge", d3.forceManyBody().strength(-2000).distanceMin(0).distanceMax(2000))
                 .force("collide", d3.forceCollide().strength(1).radius(10).iterations(10));
 
             const svg = d3.select("#grafo")
@@ -96,10 +97,10 @@ export default {
                 .join("marker")
                 .attr("id", d => `arrow-${d}`)
                 .attr("viewBox", "0 -5 10 10")
-                .attr("refX", 18)
-                .attr("refY", -0.5)
-                .attr("markerWidth", 6)
-                .attr("markerHeight", 6)
+                .attr("refX", 15)
+                .attr("refY", 0)
+                .attr("markerWidth", 10)
+                .attr("markerHeight", 10)
                 .attr("orient", "auto")
                 .append("path")
                 .attr("fill", d => vue.getArrowColor(d))
@@ -107,14 +108,14 @@ export default {
 
             const link = svg.append("g")
                 .attr("fill", "none")
-                .attr("stroke-width", 3)
+                .attr("stroke-width", 2)
                 .selectAll("path")
                 .data(links)
                 .join("path")
                 .attr("stroke", d => vue.getArrowColor(d.type))
                 .attr("marker-end", d => `url(${new URL(`#arrow-${d.type}`, location)})`);
 
-            const node = svg.append("g")
+            this.node = svg.append("g")
                 .attr("fill", "#666666")
                 .attr("stroke-linecap", "round")
                 .attr("stroke-linejoin", "round")
@@ -142,7 +143,7 @@ export default {
                 .join("g")
                 .call(this.drag(simulation, vue));
 
-            node.append("circle")
+            this.node.append("circle")
                 .attr("x", 100)
                 .attr("stroke", d => {
                     if(d.tipo == vue.$store.getters.getNode.tipo && d.propriedades.id == vue.$store.getters.getNode.id){
@@ -166,7 +167,7 @@ export default {
                     }
                 });
 
-            node.append("text")
+            this.node.append("text")
                 .attr("x", d => {
                     if(d.tipo == vue.$store.getters.getNode.tipo && d.propriedades.id == vue.$store.getters.getNode.id){
                         return 30;
@@ -175,7 +176,7 @@ export default {
                     }
                 })
                 .attr("y", 0)
-                .style("font-size", "15px")
+                .style("font-size", "16px")
                 .text(d => {
                     if(d.tipo == "CidadaoRegistado"){
                         return "Cidadão Registado";
@@ -194,7 +195,7 @@ export default {
                 .attr("stroke", "white")
                 .attr("stroke-width", 3);
 
-            node.append("text")
+            this.node.append("text")
                 .attr("x", d => {
                     if(d.tipo == vue.$store.getters.getNode.tipo && d.propriedades.id == vue.$store.getters.getNode.id){
                         return 30;
@@ -203,7 +204,7 @@ export default {
                     }
                 })
                 .attr("y", 20)
-                .style("font-size", "18px")
+                .style("font-size", "20px")
                 .text(d => {
                     if(d.propriedades.nome){
                         return d.propriedades.nome;
@@ -220,7 +221,7 @@ export default {
 
             simulation.on("tick", () => {
                 link.attr("d", this.linkArc);
-                node.attr("transform", d => `translate(${d.x},${d.y})`);
+                this.node.attr("transform", d => `translate(${d.x},${d.y})`);
 
                 if(this.$store.getters.getNode.tipo != ""){
                     var n = d3.selectAll(".node");
@@ -296,9 +297,9 @@ export default {
         drag(simulation, vue){
             function dragstarted(event, d) {
                 if(d.tipo != vue.$store.getters.getNode.tipo || d.propriedades.id != vue.$store.getters.getNode.id){
-                    if (!event.active) simulation.alphaTarget(0.3).restart();
+                    if (!event.active) simulation.alphaTarget(0.5).restart();
                     d.fx = d.x;
-                    d.fy = d.y;    
+                    d.fy = d.y;
                 }
             }
             
